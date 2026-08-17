@@ -1,5 +1,7 @@
 # ARPIA VM
 
+*Leia em outros idiomas: [English](README-en.md) · [Français](README-fr.md) · [Español](README-es.md)*
+
 Toolchain completa para a **VM ARPIA**: uma máquina virtual de 32 bits (inspirada na arquitetura 8086, mas com registradores de 32 bits), um **montador assembly** (`asm`) e um **compilador de um subconjunto de C** (`c`) que gera código para essa VM.
 
 ```
