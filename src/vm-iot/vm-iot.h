@@ -1,0 +1,10 @@
+void syscall(unsigned int p1, unsigned int p2);
+void run();
+void list_dir();
+void disk_format();
+void file_exec(String filename);
+void file_upload();
+unsigned int getmemval(unsigned int pointer, int mode);
+void setmemval(unsigned int pointer, unsigned int value, int mode);
+unsigned int getregval(unsigned int nreg);
+void setregval(unsigned int nreg, unsigned int value);

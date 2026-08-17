@@ -1,186 +1,176 @@
 .name "teste instrucoes"
 
 .code
-		m16
-		sys param, inicio
-		sys print, 1
-		sys param, s_mov
-		sys print, 1
+		sm20
+		sys print, inicio
+		sys print, s_mov
 		mov ax,1234
 		cmp ax,1234
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_add
-		sys print, 1
+		sys print, s_add
 		mov ax,7324
 		add ax,1249
 		cmp ax,8573
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_sub
-		sys print, 1
+		sys print,s_sub
+		
 		mov ax,7324
 		sub ax,1249
 		cmp ax,6075
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_mul
-		sys print, 1
+		sys print,s_mul
+		
 		mov ax,732
 		mul ax,10
 		cmp ax,7320
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_div
-		sys print, 1
+		sys print,s_div
+		
 		mov ax,7324
 		div ax,100
 		cmp ax,73
-		jne erro
-		cmp r7,24
-		jne erro
+		jnz erro
+		cmp dx,24
+		jnz erro
 		call ok
-		sys param, s_and
-		sys print, 1
+		sys print,s_and
+		
 		mov ax,5A93h
 		and ax,0FF0h
 		cmp ax,0A90h
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_or
-		sys print, 1
+		sys print,s_or
+		
 		mov ax,5A43h
 		or  ax,0F20h
 		cmp ax,5F63h
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_xor
-		sys print, 1
+		sys print,s_xor
+		
 		mov ax,5A81h
 		xor ax,0F88h
 		cmp ax,5509h
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_shl
-		sys print, 1
-		mov ax,0AAAAh
-		shl ax,1
-		cmp ax,5554h
-		jne erro
+		sys print,s_shl
+		
+		mov ax,0
+		mov aw,0AAAAh
+		shl aw,1
+		cmp aw,5554h
+		jnz erro
 		call ok
-		sys param, s_shr
-		sys print, 1
-		mov ax,5555h
-		shr ax,1
-		cmp ax,2AAAh
-		jne erro
+		sys print,s_shr
+		
+		mov aw,5555h
+		shr aw,1
+		cmp aw,2AAAh
+		jnz erro
 		call ok
-		sys param, s_rol
-		sys print, 1
-		mov ax,0AAAAh
-		rol ax,1
-		cmp ax,05555h
-		jne erro
+		sys print,s_rol
+		
+		mov aw,0AAAAh
+		rol aw,1
+		cmp aw,05555h
+		jnz erro
 		call ok
-		sys param, s_ror
-		sys print, 1
-		mov ax,0AAAAh
-		ror ax,1
-		cmp ax,05555h
-		jne erro
+		sys print,s_ror
+		
+		mov aw,0AAAAh
+		ror aw,1
+		cmp aw,05555h
+		jnz erro
 		call ok
-		sys param, s_cmps
-		sys print, 1
-		cmps str1, str2
-		jne erro
+		sys print,s_cmpastr
+		
+		str
+		cmpa str1, str2
+		jnz erro
 		call ok
-		sys param, s_movs
-		sys print, 1
-		movs str1, str3
-		cmps str2, str3
-		jne erro
+		sys print,s_movastr
+		
+		str
+		mova str3, str1
+		cmpa str2, str3
+		jnz erro
 		call ok
-		sys param, s_movnz
-		sys print, 1
+		sys print,s_movabin
+		
+		bin
 		mov cx,5
-		movnz str1, str4
-		cmps str0, str4
-		jne erro
+		mova str4, str1
+		cmpa str0, str4
+		jnz erro
 		call ok
-		sys param, s_inc
-		sys print, 1
+		sys print,s_inc
+		
 		mov ax,6253
 		inc ax
 		cmp ax,6254
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_dec
-		sys print, 1
+		sys print,s_dec
+		
 		mov ax,5362
 		dec ax
 		cmp ax,5361
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_push
-		sys print, 1
+		sys print,s_push
+		
 		mov ax,sp
 		mov bx,259
 		push bx
-		sub ax,2
+		sub ax,4
 		cmp ax,sp
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_pop
-		sys print, 1
+		sys print,s_pop
+		
 		pop ax
 		cmp ax,259
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_not
-		sys print, 1
-		mov ax,3741h
-		not ax
-		cmp ax,0C8BEh
-		jne erro
+		sys print,s_not
+		
+		mov aw,3741h
+		not aw
+		cmp aw,0C8BEh
+		jnz erro
 		call ok
-		sys param, s_loop
-		sys print, 1
+		sys print,s_loop
+		
 		mov cx,10
 		mov dx,50
 loop1:	dec dx
 		loop loop1
 		cmp dx,40
-		jne erro
+		jnz erro
 		call ok		
-		sys param, s_loopnz
-		sys print, 1
+		sys print,s_loopnz
+		
 		mov ax,5
 		mov dx,50
 loop2:	inc dx
 		dec ax
 		loopnz loop2
 		cmp dx,55
-		jne erro
+		jnz erro
 		call ok
-		sys param, s_loopne
-		sys print, 1
-		mov ax,0
-		mov dx,50
-loop3:	inc dx
-		inc ax
-		cmp ax,4
-		loopne loop3
-		cmp dx,54
-		jne erro
-		call ok
-		sys param, s_jgt
-		sys print, 1
+		sys print,s_jgt
+		
 		cmp 2,1
 		jgt l_jgt
 		jmp erro
 l_jgt:	call ok		
-		sys param, s_jge
-		sys print, 1
+		sys print,s_jge
+		
 		cmp 2,2
 		jge l_jge1
 		jmp erro
@@ -188,15 +178,15 @@ l_jge1:	cmp 2,1
 		jge l_jge2
 		jmp erro
 l_jge2: call ok
-		sys param, s_jlt
-		sys print, 1
+		sys print,s_jlt
+		
 		cmp 1,2
 		jlt l_jlt
 		jmp erro
-l_jlt:	jeq erro
+l_jlt:	jz erro
 		call ok
-		sys param, s_jle
-		sys print, 1
+		sys print,s_jle
+		
 		cmp 2,2
 		jle l_jle1
 		jmp erro
@@ -204,38 +194,38 @@ l_jle1:	cmp 1,2
 		jle l_jle2
 		jmp erro
 l_jle2:	call ok
-		sys param, s_jeq
-		sys print, 1
+		sys print,s_jz
+		
 		cmp 2,2
-		jeq l_jeq
+		jz l_jz
 		jmp erro
-l_jeq:	call ok
-		sys param, s_jne
-		sys print, 1
+l_jz:	call ok
+		sys print,s_jnz
+		
 		cmp 2,1
-		jne l_jne
+		jnz l_jnz
 		jmp erro
-l_jne:	call ok
-		sys param, s_jc
-		sys print, 1
+l_jnz:	call ok
+		sys print,s_jc
+		
 		mov ax,1
 		shr ax,1
 		jc l_jc
 		jmp erro
 l_jc:	call ok
-		sys param, s_jnc
-		sys print, 1
+		sys print,s_jnc
+		
 		mov ax,2
 		shr ax,1
 		jnc l_jnc
 		jmp erro
 l_jnc:	call ok		
 		sys halt,0
-ok:		sys param, msg_ok
-		sys print, 1
+ok:		sys print,msg_ok
+		
 		ret
-erro:	sys param, msg_erro
-		sys print, 1
+erro:	sys print,msg_erro
+		
 		sys halt,1
 
 .data
@@ -264,9 +254,9 @@ s_shl:		db "SHL",0
 s_shr:		db "SHR",0
 s_rol:		db "ROL",0
 s_ror:		db "ROR",0
-s_cmps:		db "CMPS",0
-s_movs:		db "MOVS",0
-s_movnz:	db "MOVNZ",0
+s_cmpastr:	db "CMPA",0
+s_movastr:	db "MOVA(str)",0
+s_movabin:	db "MOVA(bin)",0
 s_inc:		db "INC",0
 s_dec:		db "DEC",0
 s_push:		db "PUSH",0
@@ -274,13 +264,12 @@ s_pop:		db "POP",0
 s_not:		db "NOT",0
 s_loop:		db "LOOP",0
 s_loopnz:	db "LOOPNZ",0
-s_loopne:	db "LOOPNE",0
 s_jgt:		db "JGT",0
 s_jge:		db "JGE",0
 s_jlt:		db "JLT",0
 s_jle:		db "JLE",0
-s_jeq:		db "JEQ",0
-s_jne:		db "JNE",0
+s_jz:		db "JZ",0
+s_jnz:		db "JNZ",0
 s_jc:		db "JC",0
 s_jnc:		db "JNC",0
 ;s_jmp:		db "JMP",0

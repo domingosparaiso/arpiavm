@@ -1,9 +1,8 @@
 .name "hello"
 
 .code
-m32
-sys param, msg
-sys print,1
+sm32
+sys print, msg
 sys halt,0
 
 .data
