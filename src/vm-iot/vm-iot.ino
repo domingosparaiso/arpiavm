@@ -31,6 +31,10 @@ File uploadFile;
 
 int debug_term = 0;
 String vmIP = "";
+String VM_WIFI_SSID = WIFI_SSID;
+String VM_WIFI_PASSWORD = WIFI_PASSWORD;
+String VM_WIFI_AP_SSID = WIFI_AP_SSID;
+String VM_WIFI_AP_PASSWORD = WIFI_AP_PASSWORD;
 
 String read_input() {
     String result = "";
@@ -212,10 +216,61 @@ String strip_leading_slash(String name) {
     return name;
 }
 
+void load_wifi_credentials() {
+    File credFile = LittleFS.open("/wifi.txt", "r");
+    if (!credFile) return;
+    String line = credFile.readStringUntil('\n');
+    line.trim();
+    int sepIndex = line.indexOf(',');
+    if (sepIndex != -1) {
+        VM_WIFI_SSID = line.substring(0, sepIndex);
+        VM_WIFI_PASSWORD = line.substring(sepIndex + 1);
+        VM_WIFI_SSID.trim();
+        VM_WIFI_PASSWORD.trim();
+        Serial.printf("Loaded WiFi credentials from wifi.txt: SSID=\"%s\"\n", VM_WIFI_SSID.c_str());
+    } else {
+        Serial.println("Invalid format in wifi.txt. Expected format: SSID,PASSWORD");
+    }
+    line = credFile.readStringUntil('\n');
+    line.trim();
+    sepIndex = line.indexOf(',');
+    if (sepIndex != -1) {
+        VM_WIFI_AP_SSID = line.substring(0, sepIndex);
+        VM_WIFI_AP_PASSWORD = line.substring(sepIndex + 1);
+        VM_WIFI_AP_SSID.trim();
+        VM_WIFI_AP_PASSWORD.trim();
+    }
+}
+
+void wifi_save_credentials() {
+    File credFile = LittleFS.open("/wifi.txt", FILE_WRITE);
+    if (!credFile) {
+        Serial.println("Failed to open wifi.txt for writing!");
+        return;
+    }
+    Serial.print("\nEnter WiFi SSID: ");
+    String vm_ssid = read_input();
+    Serial.print("\nEnter WiFi Password: ");
+    String vm_password = read_input();
+    if (vm_ssid.length() > 0) VM_WIFI_SSID = vm_ssid;
+    if (vm_password.length() > 0) VM_WIFI_PASSWORD = vm_password;
+    Serial.print("\nFailover when no Wifi found.\nEnter AP SSID: ");
+    vm_ssid = read_input();
+    Serial.print("\nEnter AP Password: ");
+    vm_password = read_input();
+    if (vm_ssid.length() > 0) VM_WIFI_AP_SSID = vm_ssid;
+    if (vm_password.length() > 0) VM_WIFI_AP_PASSWORD = vm_password;
+    credFile.printf("%s,%s\n", VM_WIFI_SSID, VM_WIFI_PASSWORD);
+    credFile.printf("%s,%s\n", VM_WIFI_AP_SSID, VM_WIFI_AP_PASSWORD);
+    credFile.close();
+    Serial.println("\nWiFi credentials saved to wifi.txt\n");
+}
+
 void wifi_setup() {
-    Serial.printf("Connecting to WiFi \"%s\" ", WIFI_SSID);
+    load_wifi_credentials();
+    Serial.printf("Connecting to WiFi \"%s\" ", VM_WIFI_SSID);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(VM_WIFI_SSID, VM_WIFI_PASSWORD);
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
         delay(250);
@@ -229,8 +284,8 @@ void wifi_setup() {
     } else {
         Serial.println("WiFi connection failed, starting Access Point...");
         WiFi.mode(WIFI_AP);
-        WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASSWORD);
-        Serial.printf("Access Point \"%s\" started. IP address: ", WIFI_AP_SSID);
+        WiFi.softAP(VM_WIFI_AP_SSID, VM_WIFI_AP_PASSWORD);
+        Serial.printf("Access Point \"%s\" started. IP address: ", VM_WIFI_AP_SSID);
         Serial.println(WiFi.softAPIP());
         vmIP = WiFi.softAPIP().toString();
     }
@@ -354,12 +409,13 @@ void setup() {
 #define TOKEN_DUMP    7
 #define TOKEN_CLEAR   8
 #define TOKEN_TERM    9
+#define TOKEN_WIFI    10
 
 void loop() {
     int command_token = TOKEN_NONE;
     String param = "";
-    String commands[] = {"ls", "dir", "ver", "version", "help", "?", "format", "del", "rm", "cat", "type", "dump", "cls", "clear", "term"};
-    const int command_tokens[] = { TOKEN_DIR, TOKEN_DIR, TOKEN_VERSION, TOKEN_VERSION, TOKEN_HELP, TOKEN_HELP, TOKEN_FORMAT, TOKEN_DELETE, TOKEN_DELETE, TOKEN_CAT, TOKEN_CAT, TOKEN_DUMP, TOKEN_CLEAR, TOKEN_CLEAR, TOKEN_TERM };
+    String commands[] = {"ls", "dir", "ver", "version", "help", "?", "format", "del", "rm", "cat", "type", "dump", "cls", "clear", "term", "wifi"};
+    const int command_tokens[] = { TOKEN_DIR, TOKEN_DIR, TOKEN_VERSION, TOKEN_VERSION, TOKEN_HELP, TOKEN_HELP, TOKEN_FORMAT, TOKEN_DELETE, TOKEN_DELETE, TOKEN_CAT, TOKEN_CAT, TOKEN_DUMP, TOKEN_CLEAR, TOKEN_CLEAR, TOKEN_TERM, TOKEN_WIFI };
     String command = read_input();
     Serial.println("");
     if(command != "") {
@@ -369,7 +425,7 @@ void loop() {
             param = command.substring(endIndex + 1);
             command = token;
         }
-        for(int c=0; c<15; c++) {
+        for(int c=0; c<16; c++) {
             if (commands[c] == command) {
                 command_token = command_tokens[c];
                 break;
@@ -391,6 +447,7 @@ void loop() {
                                 "cat/type ..... show file contents\n"
                                 "dump ......... dump hex file\n"
                                 "cls/clear .... clear screen\n"
+                                "wifi ......... configure wifi SSID/Password\n"
                                 "<filename>.... execute file\n"
                                 "web UI........ http://");
                 Serial.print(vmIP);
@@ -413,6 +470,10 @@ void loop() {
                 break;
             case TOKEN_TERM:
                 debug_term = (debug_term==0)?1:0;
+                break;
+            case TOKEN_WIFI:
+                load_wifi_credentials();
+                wifi_save_credentials();
                 break;
             default:
                 if(command != "") {
