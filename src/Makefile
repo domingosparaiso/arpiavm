@@ -13,10 +13,10 @@ all:	asm c vm
 	cd ./c ; flex c.l
 
 ../bin/asm.exe: ./asm/asm.tab.c ./asm/asm.tab.h ./asm/lex.yy.c ./vm-iot/arpia.h
-	cd ./asm ; gcc -o ../../bin/asm.exe asm.tab.c -ly -L /lib
+	cd ./asm ; gcc -o ../../bin/asm.exe asm.tab.c -L /lib
 
 ../bin/c.exe: ./c/c.tab.c ./c/c.tab.h ./c/lex.yy.c ./vm-iot/arpia.h
-	cd ./c ; gcc -o ../../bin/c.exe c.tab.c -ly -L /lib
+	cd ./c ; gcc -o ../../bin/c.exe c.tab.c -L /lib
 
 ../bin/vm.exe: ./vm-x86/vm.c ./vm-iot/arpia.h ./vm-iot/vm-arpia.h ./vm-x86/syscall.h ./vm-x86/vm.h
 	cd ./vm-x86 ; gcc -o ../../bin/vm.exe vm.c
