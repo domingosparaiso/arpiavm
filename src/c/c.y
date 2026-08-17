@@ -1329,7 +1329,7 @@ expr_t gen_call(const char *name, int argcount) {
 	if(strcmp(name, "getch") == 0) {
 		if(argcount != 1) semerror("getch espera 1 argumento (timeout)");
 		emitc("\tpop bx");
-		emitc("\tsys 5,bx");
+		emitc("\tsys getch,bx");
 		result.kind = 0;
 		result.type.base = T_INT; result.type.sdef = NULL; result.type.array = 0; result.type.arraylen = 0; result.type.isref = 0;
 		return result;
@@ -1346,7 +1346,7 @@ expr_t gen_call(const char *name, int argcount) {
 	if(strcmp(name, "inputpin") == 0) {
 		if(argcount != 1) semerror("inputpin espera 1 argumento (pin)");
 		emitc("\tpop bx");
-		emitc("\tsys 6,bx");
+		emitc("\tsys inputpin,bx");
 		result.kind = 0;
 		result.type.base = T_VOID; result.type.sdef = NULL; result.type.array = 0; result.type.arraylen = 0; result.type.isref = 0;
 		return result;
@@ -1354,7 +1354,7 @@ expr_t gen_call(const char *name, int argcount) {
 	if(strcmp(name, "outputpin") == 0) {
 		if(argcount != 1) semerror("outputpin espera 1 argumento (pin)");
 		emitc("\tpop bx");
-		emitc("\tsys 7,bx");
+		emitc("\tsys outputpin,bx");
 		result.kind = 0;
 		result.type.base = T_VOID; result.type.sdef = NULL; result.type.array = 0; result.type.arraylen = 0; result.type.isref = 0;
 		return result;
@@ -1362,7 +1362,7 @@ expr_t gen_call(const char *name, int argcount) {
 	if(strcmp(name, "pulluppin") == 0) {
 		if(argcount != 1) semerror("pulluppin espera 1 argumento (pin)");
 		emitc("\tpop bx");
-		emitc("\tsys 8,bx");
+		emitc("\tsys pullup,bx");
 		result.kind = 0;
 		result.type.base = T_VOID; result.type.sdef = NULL; result.type.array = 0; result.type.arraylen = 0; result.type.isref = 0;
 		return result;

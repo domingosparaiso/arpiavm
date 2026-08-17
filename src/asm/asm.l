@@ -111,6 +111,10 @@ ident	[A-Z][A-Z0-9_]*
 "PRINTF"	{ yylval = SYS_PRINTF; return NUMERO; }
 "DEBUG"		{ yylval = SYS_DEBUG; return NUMERO; }
 "HALT"		{ yylval = SYS_HALT; return NUMERO; }
+"GETCHAR"	{ yylval = SYS_GETCHAR; return NUMERO; }
+"INPUTPIN"	{ yylval = SYS_INPUTPIN; return NUMERO; }
+"OUTPUTPIN"	{ yylval = SYS_OUTPUTPIN; return NUMERO; }
+"PULLUP"	{ yylval = SYS_PULLUP; return NUMERO; }
 "DUP"		{ return DUP; }
 
 "?"							{ return INDEFINIDO; }
