@@ -216,7 +216,15 @@ String strip_leading_slash(String name) {
     return name;
 }
 
-void load_wifi_credentials() {
+String html_escape(String s) {
+    s.replace("&", "&amp;");
+    s.replace("\"", "&quot;");
+    s.replace("<", "&lt;");
+    s.replace(">", "&gt;");
+    return s;
+}
+
+void load_wifi_credentials(int showmsg) {
     File credFile = LittleFS.open("/wifi.txt", "r");
     if (!credFile) return;
     String line = credFile.readStringUntil('\n');
@@ -227,9 +235,9 @@ void load_wifi_credentials() {
         VM_WIFI_PASSWORD = line.substring(sepIndex + 1);
         VM_WIFI_SSID.trim();
         VM_WIFI_PASSWORD.trim();
-        Serial.printf("Loaded WiFi credentials from wifi.txt: SSID=\"%s\"\n", VM_WIFI_SSID.c_str());
+        if(showmsg) Serial.printf("Loaded WiFi credentials from wifi.txt: SSID=\"%s\"\n", VM_WIFI_SSID.c_str());
     } else {
-        Serial.println("Invalid format in wifi.txt. Expected format: SSID,PASSWORD");
+        if(showmsg) Serial.println("Invalid format in wifi.txt. Expected format: SSID,PASSWORD");
     }
     line = credFile.readStringUntil('\n');
     line.trim();
@@ -242,32 +250,36 @@ void load_wifi_credentials() {
     }
 }
 
-void wifi_save_credentials() {
-    File credFile = LittleFS.open("/wifi.txt", FILE_WRITE);
-    if (!credFile) {
-        Serial.println("Failed to open wifi.txt for writing!");
-        return;
-    }
-    Serial.print("\nEnter WiFi SSID: ");
+void wifi_edit_credentials() {
+    Serial.printf("\nEnter WiFi SSID [%s]: ", VM_WIFI_SSID);
     String vm_ssid = read_input();
-    Serial.print("\nEnter WiFi Password: ");
+    Serial.printf("\nEnter WiFi Password [%s]: ", VM_WIFI_PASSWORD);
     String vm_password = read_input();
     if (vm_ssid.length() > 0) VM_WIFI_SSID = vm_ssid;
     if (vm_password.length() > 0) VM_WIFI_PASSWORD = vm_password;
-    Serial.print("\nFailover when no Wifi found.\nEnter AP SSID: ");
+    Serial.printf("\nFailover when no Wifi found.\nEnter AP SSID [%s]: ", VM_WIFI_AP_SSID);
     vm_ssid = read_input();
-    Serial.print("\nEnter AP Password: ");
+    Serial.printf("\nEnter AP Password [%s]: ", VM_WIFI_AP_PASSWORD);
     vm_password = read_input();
     if (vm_ssid.length() > 0) VM_WIFI_AP_SSID = vm_ssid;
     if (vm_password.length() > 0) VM_WIFI_AP_PASSWORD = vm_password;
+}
+
+void wifi_save_credentials(int showmsg) {
+    File credFile = LittleFS.open("/wifi.txt", FILE_WRITE);
+    if (!credFile) {
+        if(showmsg) Serial.println("\Fail to access wifi.txt file\n");
+        return;
+    }
     credFile.printf("%s,%s\n", VM_WIFI_SSID, VM_WIFI_PASSWORD);
     credFile.printf("%s,%s\n", VM_WIFI_AP_SSID, VM_WIFI_AP_PASSWORD);
     credFile.close();
-    Serial.println("\nWiFi credentials saved to wifi.txt\n");
+    if(showmsg) Serial.println("\nWiFi credentials saved to wifi.txt\n");
+    return;
 }
 
 void wifi_setup() {
-    load_wifi_credentials();
+    load_wifi_credentials(1);
     Serial.printf("Connecting to WiFi \"%s\" ", VM_WIFI_SSID);
     WiFi.mode(WIFI_STA);
     WiFi.begin(VM_WIFI_SSID, VM_WIFI_PASSWORD);
@@ -338,9 +350,46 @@ void web_handle_root() {
             "<h2>Upload de arquivo</h2>"
             "<form method='POST' action='/upload' enctype='multipart/form-data'>"
             "<input type='file' name='upload'> <button type='submit'>Enviar</button>"
-            "</form></body></html>";
+            "</form>"
+            "<p><a href='/wifi'>Configurar WiFi</a></p>"
+            "</body></html>";
 
     webserver.send(200, "text/html", html);
+}
+
+void web_handle_wifi_get() {
+    load_wifi_credentials(0);
+
+    String html;
+    html.reserve(1536);
+    html += "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+            "<title>Arpia VM - WiFi</title>"
+            "<style>body{font-family:sans-serif;margin:2em;}"
+            "label{display:block;margin-top:0.8em;}"
+            "input{padding:0.3em;width:260px;max-width:100%;}"
+            "button{cursor:pointer;margin-top:1.5em;}</style></head><body>"
+            "<h1>Arpia VM &mdash; WiFi</h1>"
+            "<form method='POST' action='/wifi'>"
+            "<label>SSID<input type='text' name='ssid' value='" + html_escape(VM_WIFI_SSID) + "'></label>"
+            "<label>Senha<input type='password' name='password' value='" + html_escape(VM_WIFI_PASSWORD) + "'></label>"
+            "<label>SSID do Access Point (fallback)<input type='text' name='ap_ssid' value='" + html_escape(VM_WIFI_AP_SSID) + "'></label>"
+            "<label>Senha do Access Point<input type='password' name='ap_password' value='" + html_escape(VM_WIFI_AP_PASSWORD) + "'></label>"
+            "<button type='submit'>Salvar</button>"
+            "</form>"
+            "<p><a href='/'>&larr; Voltar</a></p>"
+            "</body></html>";
+
+    webserver.send(200, "text/html", html);
+}
+
+void web_handle_wifi_post() {
+    if (webserver.hasArg("ssid")) VM_WIFI_SSID = webserver.arg("ssid");
+    if (webserver.hasArg("password")) VM_WIFI_PASSWORD = webserver.arg("password");
+    if (webserver.hasArg("ap_ssid")) VM_WIFI_AP_SSID = webserver.arg("ap_ssid");
+    if (webserver.hasArg("ap_password")) VM_WIFI_AP_PASSWORD = webserver.arg("ap_password");
+    wifi_save_credentials(0);
+    webserver.sendHeader("Location", "/wifi", true);
+    webserver.send(303);
 }
 
 void web_handle_delete() {
@@ -377,6 +426,8 @@ void web_handle_upload_done() {
 
 void web_server_setup() {
     webserver.on("/", HTTP_GET, web_handle_root);
+    webserver.on("/wifi", HTTP_GET, web_handle_wifi_get);
+    webserver.on("/wifi", HTTP_POST, web_handle_wifi_post);
     webserver.on("/delete", HTTP_GET, web_handle_delete);
     webserver.on("/upload", HTTP_POST, web_handle_upload_done, web_handle_upload_data);
     webserver.onNotFound([]() { webserver.send(404, "text/plain", "Not found"); });
@@ -410,12 +461,13 @@ void setup() {
 #define TOKEN_CLEAR   8
 #define TOKEN_TERM    9
 #define TOKEN_WIFI    10
+#define TOKEN_REBOOT  11
 
 void loop() {
     int command_token = TOKEN_NONE;
     String param = "";
-    String commands[] = {"ls", "dir", "ver", "version", "help", "?", "format", "del", "rm", "cat", "type", "dump", "cls", "clear", "term", "wifi"};
-    const int command_tokens[] = { TOKEN_DIR, TOKEN_DIR, TOKEN_VERSION, TOKEN_VERSION, TOKEN_HELP, TOKEN_HELP, TOKEN_FORMAT, TOKEN_DELETE, TOKEN_DELETE, TOKEN_CAT, TOKEN_CAT, TOKEN_DUMP, TOKEN_CLEAR, TOKEN_CLEAR, TOKEN_TERM, TOKEN_WIFI };
+    String commands[] = {"ls", "dir", "ver", "version", "help", "?", "format", "del", "rm", "cat", "type", "dump", "cls", "clear", "term", "wifi", "reboot"};
+    const int command_tokens[] = { TOKEN_DIR, TOKEN_DIR, TOKEN_VERSION, TOKEN_VERSION, TOKEN_HELP, TOKEN_HELP, TOKEN_FORMAT, TOKEN_DELETE, TOKEN_DELETE, TOKEN_CAT, TOKEN_CAT, TOKEN_DUMP, TOKEN_CLEAR, TOKEN_CLEAR, TOKEN_TERM, TOKEN_WIFI, TOKEN_REBOOT };
     String command = read_input();
     Serial.println("");
     if(command != "") {
@@ -425,7 +477,7 @@ void loop() {
             param = command.substring(endIndex + 1);
             command = token;
         }
-        for(int c=0; c<16; c++) {
+        for(int c=0; c<17; c++) {
             if (commands[c] == command) {
                 command_token = command_tokens[c];
                 break;
@@ -447,6 +499,7 @@ void loop() {
                                 "cat/type ..... show file contents\n"
                                 "dump ......... dump hex file\n"
                                 "cls/clear .... clear screen\n"
+                                "reboot ....... restart device\n"
                                 "wifi ......... configure wifi SSID/Password\n"
                                 "<filename>.... execute file\n"
                                 "web UI........ http://");
@@ -472,8 +525,12 @@ void loop() {
                 debug_term = (debug_term==0)?1:0;
                 break;
             case TOKEN_WIFI:
-                load_wifi_credentials();
-                wifi_save_credentials();
+                load_wifi_credentials(1);
+                wifi_edit_credentials();
+                wifi_save_credentials(1);
+                break;
+            case TOKEN_REBOOT:
+                ESP.restart();
                 break;
             default:
                 if(command != "") {

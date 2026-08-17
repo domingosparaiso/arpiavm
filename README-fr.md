@@ -150,10 +150,8 @@ sur le port série (115200 bps) :
 | `dump <fichier>` | affiche le dump hexadécimal du fichier |
 | `cls` / `clear` | efface l'écran du terminal |
 | `term` | active/désactive l'affichage des codes de touches reçus (debug) |
+| `wifi` | Configure le SSID et le mot de passe du wifi |
 | `<fichier>` | charge et exécute le fichier comme programme ARPIA |
-
-Il n'y a plus de commande `upload` par le terminal série — l'envoi de fichiers vers le LittleFS se
-fait désormais par l'interface web (voir ci-dessous).
 
 ### WiFi et interface web
 
@@ -162,7 +160,9 @@ Dans `setup()`, le sketch tente de se connecter en tant que station au réseau d
 un flag de compilation) ; si la connexion échoue en 15 secondes, il démarre son propre point
 d'accès (`ArpiaVM`, mot de passe `arpiavm123`) pour garantir l'accès à l'interface même sans réseau
 configuré. L'adresse IP obtenue (réseau local ou point d'accès) est affichée sur le port série et
-dans la commande `help`.
+dans la commande `help`. La commande `wifi` du minishell permet de changer le SSID/mot de passe à
+l'exécution, en enregistrant les identifiants dans `/wifi.txt` sur le LittleFS (relu à chaque
+démarrage, prenant le pas sur `WIFI_SSID`/`WIFI_PASSWORD`).
 
 Un serveur web intégré (`WebServer` sur ESP32 / `ESP8266WebServer` sur ESP8266) sert une page à
 `http://<ip>/` qui liste les fichiers du LittleFS avec :

@@ -149,10 +149,8 @@ serial port (115200 bps):
 | `dump <file>` | prints a hex dump of the file |
 | `cls` / `clear` | clears the terminal screen |
 | `term` | toggles echoing the raw key codes received (debug) |
+| `wifi` | Configures the WiFi SSID and password |
 | `<file>` | loads and runs the file as an ARPIA program |
-
-There is no longer an `upload` command over the serial terminal — uploading files to LittleFS is
-now done through the web UI (see below).
 
 ### WiFi and web UI
 
@@ -161,7 +159,9 @@ In `setup()`, the sketch tries to connect as a station to the network defined by
 if the connection fails within 15 seconds, it starts its own Access Point (`ArpiaVM`, password
 `arpiavm123`) so the UI stays reachable even without a configured network. The resulting IP
 address (from the local network or the AP) is printed over serial and shown by the `help`
-command.
+command. The minishell's `wifi` command lets you change SSID/password at runtime, saving the
+credentials to `/wifi.txt` on LittleFS (read on every boot, overriding `WIFI_SSID`/
+`WIFI_PASSWORD`).
 
 A built-in web server (`WebServer` on ESP32 / `ESP8266WebServer` on ESP8266) serves a page at
 `http://<ip>/` that lists the files on LittleFS with:

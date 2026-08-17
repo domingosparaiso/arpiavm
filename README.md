@@ -146,10 +146,8 @@ serial (115200 bps):
 | `dump <arquivo>` | mostra o dump hexadecimal do arquivo |
 | `cls` / `clear` | limpa a tela do terminal |
 | `term` | ativa/desativa a exibição dos códigos de tecla recebidos (debug) |
+| `wifi` | Configura SSID e senha do wifi |
 | `<arquivo>` | carrega e executa o arquivo como programa ARPIA |
-
-Não há mais um comando `upload` pelo terminal serial — o envio de arquivos para o LittleFS agora é
-feito pela interface web (veja abaixo).
 
 ### WiFi e interface web
 
@@ -157,7 +155,9 @@ No `setup()`, o sketch tenta conectar-se como estação à rede definida por `WI
 `WIFI_PASSWORD` (constantes no topo de `vm-iot.ino`, editáveis ou sobrescrevíveis via flag de
 build); se a conexão falhar em 15 segundos, ele sobe um Access Point próprio (`ArpiaVM`, senha
 `arpiavm123`) para garantir acesso à interface mesmo sem uma rede configurada. O endereço IP obtido
-(da rede local ou do AP) é exibido na porta serial e no comando `help`.
+(da rede local ou do AP) é exibido na porta serial e no comando `help`. O comando `wifi` do
+minishell permite trocar SSID/senha em tempo de execução, salvando as credenciais em `/wifi.txt`
+no LittleFS (lido em cada boot, sobrepondo `WIFI_SSID`/`WIFI_PASSWORD`).
 
 Um servidor web embutido (`WebServer` no ESP32 / `ESP8266WebServer` no ESP8266) expõe em
 `http://<ip>/` uma página que lista os arquivos do LittleFS com opções de:
