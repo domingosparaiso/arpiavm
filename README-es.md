@@ -20,6 +20,7 @@ resume lo necesario para usar y extender el ensamblador y el compilador.
 - [Compilando las herramientas](#compilando-las-herramientas)
 - [Uso de las herramientas](#uso-de-las-herramientas)
 - [La VM ARPIA](#la-vm-arpia)
+- [VM IoT (vm-iot.ino)](#vm-iot-vm-iotino)
 - [El ensamblador (asm)](#el-ensamblador-asm)
 - [El compilador C](#el-compilador-c)
 - [Funciones integradas (builtin)](#funciones-integradas-builtin)
@@ -33,7 +34,8 @@ src/
   c/              fuente del compilador C (c.l / c.y, flex + bison)
   vm-x86/         VM de escritorio (vm.c, syscall.h) — usada en Windows/Linux/Mac
   vm-iot/         VM para microcontrolador (arpia.h con las constantes de la ISA,
-                  vm-iot.ino, syscall.h) — variante para Arduino/IoT
+                  vm-iot.ino, syscall.h) — variante para Arduino/IoT, con
+                  minishell serie, WiFi y servidor web (LittleFS)
   Makefile        compila asm.exe / c.exe / vm.exe
 bin/              ejecutables generados (asm.exe, c.exe, vm.exe)
 samples/          ejemplos en ensamblador (.asm) y en C (.c), con sus .bin
@@ -127,6 +129,51 @@ valores inmediatos siempre usan 32 bits.
 `printcode()` (en `asm.y`) emite: el nombre del programa, la tabla `MAP` (opcional) y el volcado
 en hexadecimal del código+datos (sección `.code` seguida de `.data`), terminado con un CRC16
 simple.
+
+## VM IoT (vm-iot.ino)
+
+Fuente: `src/vm-iot/vm-iot.ino` (+ `arpia.h`, `vm-arpia.h`, `syscall.h`). Sketch de Arduino para
+ESP32/ESP8266 que ejecuta la misma ISA de la VM ARPIA, almacenando los programas en un sistema de
+archivos **LittleFS** local a la placa.
+
+### Minishell por serie
+
+Al arrancar, el sketch monta el LittleFS, se conecta al WiFi y abre una consola de comandos por el
+puerto serie (115200 bps):
+
+| Comando | Efecto |
+|---|---|
+| `ls` / `dir` | lista los archivos del LittleFS (nombre y tamaño) |
+| `ver` / `version` | muestra la versión del firmware |
+| `help` / `?` | muestra la lista de comandos |
+| `format` | formatea el LittleFS |
+| `rm` / `del <archivo>` | borra un archivo |
+| `cat` / `type <archivo>` | muestra el contenido del archivo |
+| `dump <archivo>` | muestra el volcado hexadecimal del archivo |
+| `cls` / `clear` | limpia la pantalla del terminal |
+| `term` | activa/desactiva la impresión de los códigos de tecla recibidos (debug) |
+| `<archivo>` | carga y ejecuta el archivo como programa ARPIA |
+
+Ya no existe un comando `upload` por el terminal serie — la subida de archivos al LittleFS ahora se
+hace desde la interfaz web (ver abajo).
+
+### WiFi e interfaz web
+
+En `setup()`, el sketch intenta conectarse como estación a la red definida por `WIFI_SSID`/
+`WIFI_PASSWORD` (constantes al inicio de `vm-iot.ino`, editables o sobrescribibles mediante una
+flag de compilación); si la conexión falla en 15 segundos, levanta su propio punto de acceso
+(`ArpiaVM`, contraseña `arpiavm123`) para garantizar el acceso a la interfaz incluso sin una red
+configurada. La dirección IP obtenida (de la red local o del punto de acceso) se muestra por el
+puerto serie y en el comando `help`.
+
+Un servidor web integrado (`WebServer` en ESP32 / `ESP8266WebServer` en ESP8266) sirve una página
+en `http://<ip>/` que lista los archivos del LittleFS con opciones para:
+
+- **Eliminar** un archivo existente.
+- **Subir** un archivo nuevo (formulario multipart, escrito directamente en el LittleFS).
+
+El servidor web sigue respondiendo incluso mientras el minishell espera un comando por el puerto
+serie.
 
 ## El ensamblador (asm)
 
