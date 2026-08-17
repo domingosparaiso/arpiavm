@@ -148,76 +148,6 @@ void file_exec(String filename) {
     Serial.println("Program terminated.");
 }
 
-void file_upload(String filename) {
-	int d = 0;
-	int state = 0;
-	unsigned int fcrc = 0;
-	unsigned int ccrc = 0;
-	unsigned int i;
-    unsigned char c = 0;
-
-	maxmem = 0;
-	i = 0;
-    String line;
-
-    Serial.print("filename: ");
-    Serial.print(filename);
-    Serial.print("\ncode: ");
-    while(c != 10 && c != 13) {
-        webserver.handleClient();
-        if(Serial.available() > 0) {
-            c = (unsigned char) Serial.read();
-            if(c != 10 && c != 13) {
-                if(maxmem <= MAXRAM) {
-                    if(c != ' ') {
-                        c = c-'0'; if(c > 9) c -= 7; if(c > 15) c -= 32;
-                        if(d == 0) {
-                            d = 1;
-                            i = c;
-                        } else {
-                            d = 0;
-                            i = (i << 4) + c;
-                            ccrc = (ccrc + i) & 0xFFFF;
-                            memory[maxmem++]=(unsigned char)(i & 0xff);
-                        }
-                        c = 0;
-                    }
-                }
-            }
-        }
-    }
-    Serial.print("\ncrc: ");
-    c = 0;
-    String scrc = read_input();
-    if(scrc.length() >= 4) {
-        for(int i=0; i<4; i++) {
-            c = scrc[i];
-            if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-                c=c-'0'; if(c>9) c-=7; if(c>15) c-=32;
-                fcrc=(fcrc<<4)+c;
-                c = 0;
-            }
-        }
-    }
-    Serial.println("\nOK\n");
-	if(ccrc == fcrc) {
-        Serial.print("File loaded into memory.\n");
-		Serial.printf("CRC: OK\n");
-        Serial.printf("Bytes: %d\n", maxmem);
-        filename = "/" + filename;
-        File file = LittleFS.open(filename, "wb");
-        if (!file) {
-            Serial.print("Failed to open file for writing\n");
-            return;
-        }
-        size_t bytesWritten = file.write((const uint8_t*)&memory, maxmem);
-        file.close();
-        Serial.printf("Successfully wrote %d bytes.\n", bytesWritten);
-	} else {
-		Serial.printf("CRC Fail: Read=%04X Calc=%04X\n", fcrc, ccrc);
-	}
-}
-
 void file_delete(String filename) {
     filename = "/" + filename;
     if(LittleFS.exists(filename)) {
@@ -295,14 +225,14 @@ void wifi_setup() {
     if (WiFi.status() == WL_CONNECTED) {
         Serial.print("WiFi connected. IP address: ");
         Serial.println(WiFi.localIP());
-        vmIP = String(WiFi.localIP());
+        vmIP = WiFi.localIP().toString();
     } else {
         Serial.println("WiFi connection failed, starting Access Point...");
         WiFi.mode(WIFI_AP);
         WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASSWORD);
         Serial.printf("Access Point \"%s\" started. IP address: ", WIFI_AP_SSID);
         Serial.println(WiFi.softAPIP());
-        vmIP = String(WiFi.softAPIP());
+        vmIP = WiFi.softAPIP().toString();
     }
 }
 
@@ -419,18 +349,17 @@ void setup() {
 #define TOKEN_VERSION 2
 #define TOKEN_HELP    3
 #define TOKEN_FORMAT  4
-#define TOKEN_UPLOAD  5
-#define TOKEN_DELETE  6
-#define TOKEN_CAT     7
-#define TOKEN_DUMP    8
-#define TOKEN_CLEAR   9
-#define TOKEN_TERM    10
+#define TOKEN_DELETE  5
+#define TOKEN_CAT     6
+#define TOKEN_DUMP    7
+#define TOKEN_CLEAR   8
+#define TOKEN_TERM    9
 
 void loop() {
     int command_token = TOKEN_NONE;
     String param = "";
-    String commands[] = {"ls", "dir", "ver", "version", "help", "?", "format", "upload", "del", "rm", "cat", "type", "dump", "cls", "clear", "term"};
-    const int command_tokens[] = { TOKEN_DIR, TOKEN_DIR, TOKEN_VERSION, TOKEN_VERSION, TOKEN_HELP, TOKEN_HELP, TOKEN_FORMAT, TOKEN_UPLOAD, TOKEN_DELETE, TOKEN_DELETE, TOKEN_CAT, TOKEN_CAT, TOKEN_DUMP, TOKEN_CLEAR, TOKEN_CLEAR, TOKEN_TERM };
+    String commands[] = {"ls", "dir", "ver", "version", "help", "?", "format", "del", "rm", "cat", "type", "dump", "cls", "clear", "term"};
+    const int command_tokens[] = { TOKEN_DIR, TOKEN_DIR, TOKEN_VERSION, TOKEN_VERSION, TOKEN_HELP, TOKEN_HELP, TOKEN_FORMAT, TOKEN_DELETE, TOKEN_DELETE, TOKEN_CAT, TOKEN_CAT, TOKEN_DUMP, TOKEN_CLEAR, TOKEN_CLEAR, TOKEN_TERM };
     String command = read_input();
     Serial.println("");
     if(command != "") {
@@ -440,7 +369,7 @@ void loop() {
             param = command.substring(endIndex + 1);
             command = token;
         }
-        for(int c=0; c<16; c++) {
+        for(int c=0; c<15; c++) {
             if (commands[c] == command) {
                 command_token = command_tokens[c];
                 break;
@@ -458,7 +387,6 @@ void loop() {
                                 "ls/dir........ list disk contents\n"
                                 "ver/version... show version\n"
                                 "format........ format disk\n"
-                                "upload........ upload file\n"
                                 "rm/del........ delete file\n"
                                 "cat/type ..... show file contents\n"
                                 "dump ......... dump hex file\n"
@@ -470,9 +398,6 @@ void loop() {
                 break;
             case TOKEN_FORMAT:
                 disk_format();
-                break;
-            case TOKEN_UPLOAD:
-                file_upload(param);
                 break;
             case TOKEN_DELETE:
                 file_delete(param);

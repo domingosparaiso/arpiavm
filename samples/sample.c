@@ -1,9 +1,8 @@
 void main() {
-	int x;
-	int y;
-	x = 10;
-	y = 723;
+	float x;
+	float y;
+	x = 10.4;
+	y = 72.3;
 	x = y/x;
-	x = x*2 + y;
-	printf("Hello, world!\n%d\n", x);
+	printf("Result: %.6f\n", x);
 }
