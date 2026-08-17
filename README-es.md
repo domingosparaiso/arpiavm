@@ -232,10 +232,10 @@ número literal o una de las palabras clave reconocidas por el léxico del ensam
 | 2 | `PRINTF` | imprime usando la máscara definida por `PRINTS`, con `<param>` como valor |
 | 3 | `DEBUG` | como `PRINT`, pero solo imprime si la VM está en modo debug |
 | 4 | `HALT` | detiene la ejecución de la VM |
-| 5 | — | lee un carácter de stdin (`getchar()`) y escribe el valor leído en `AX` |
-| 6 | — | configura `<param>` como pin de entrada (`inputpin`) — aún no implementado en la VM |
-| 7 | — | configura `<param>` como pin de salida (`outputpin`) — aún no implementado en la VM |
-| 8 | — | configura `<param>` como pin de entrada con pull-up (`pulluppin`) — aún no implementado en la VM |
+| 5 | `GETCH` | lee un carácter de stdin (`getchar()`) y escribe el valor leído en `AX` |
+| 6 | `INPUTPIN` | configura `<param>` como pin de entrada (`inputpin`) |
+| 7 | `OUTPUTPIN` | configura `<param>` como pin de salida (`outputpin`) |
+| 8 | `PULLUP` | configura `<param>` como pin de entrada con pull-up (`pulluppin`) |
 
 `SYSCALL` **no** es un mnemónico separado del ensamblador — `SYS` cubre todos los códigos
 anteriores y cualquier código numérico adicional que la VM llegue a implementar.
@@ -350,11 +350,11 @@ directamente por el compilador (no necesitan — ni pueden — ser redeclaradas 
 | `int input(int <puerto>);` | `in <reg>,<puerto>` | valor leído del puerto |
 | `void output(int <puerto>, int <valor>);` | `out <valor>,<puerto>` | — |
 | `void delay(int <ms>);` | `delay <reg>` | — |
-| `int getch(int <timeout>);` | `sys 5,<reg>` | carácter leído de stdin (`getchar()`), valor devuelto por la VM en `AX` |
+| `int getch(int <timeout>);` | `sys getch,<reg>` | carácter leído de stdin (`getchar()`), valor devuelto por la VM en `AX` |
 | `int syscall(int <number>, int <param>);` | `sys <number>,<param>` | valor devuelto por la VM en `AX` |
-| `void inputpin(<pin>);` | `sys 6,<reg>` | — |
-| `void outputpin(<pin>);` | `sys 7,<reg>` | — |
-| `void pulluppin(<pin>);` | `sys 8,<reg>` | — |
+| `void inputpin(<pin>);` | `sys inputpin,<reg>` | — |
+| `void outputpin(<pin>);` | `sys outputpin,<reg>` | — |
+| `void pulluppin(<pin>);` | `sys pullup,<reg>` | — |
 
 Notas:
 
@@ -369,10 +369,7 @@ Notas:
   códigos aún no cubiertos por una función integrada dedicada) sin necesidad de extender el
   compilador.
 - `inputpin`/`outputpin`/`pulluppin` siguen el mismo patrón que `getch` (el argumento se desapila
-  a un registro y se emite la instrucción `sys` con el código fijo 6/7/8), pero la rutina de
-  syscall de la VM aún **no maneja** esos códigos (ninguna de las dos variantes, `vm-x86` ni
-  `vm-iot`, tiene un `case` para 6/7/8 en `syscall.h`) — el ensamblador generado es correcto,
-  pero la VM actual simplemente ignora la llamada (sin efecto, sin error).
+  a un registro y se emite la instrucción `sys`).
 
 ## Limitaciones conocidas
 
