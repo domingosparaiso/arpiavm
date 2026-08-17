@@ -4,14 +4,39 @@
 #include "vm-iot.h"
 #include "vm-arpia.h"
 #include "syscall.h"
-#define VERSION "1.00"
+#define VERSION "1.02"
+
+#ifdef ESP32
+#include <WiFi.h>
+#include <WebServer.h>
+WebServer webserver(80);
+#endif
+#ifdef ESP8266
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+ESP8266WebServer webserver(80);
+#endif
+
+#ifndef WIFI_SSID
+#define WIFI_SSID "changeme"
+#endif
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD "changeme"
+#endif
+#define WIFI_AP_SSID "ArpiaVM"
+#define WIFI_AP_PASSWORD "arpiavm123"
+#define WIFI_CONNECT_TIMEOUT_MS 15000
+
+File uploadFile;
 
 int debug_term = 0;
+String vmIP = "";
 
 String read_input() {
     String result = "";
     int ch = 0;
     while(ch != 10 && ch != 13) {
+        webserver.handleClient();
         if (Serial.available() > 0) {
             ch = Serial.read();
             if(debug_term) Serial.printf("[%02X]", ch);
@@ -115,10 +140,10 @@ void file_exec(String filename) {
     }
 
     size_t fileSize = readFile.size();
-    Serial.printf("File Size: %d bytes\n", fileSize);
+//    Serial.printf("File Size: %d bytes\n", fileSize);
 
     size_t bytesRead = readFile.read(memory, fileSize);
-    Serial.printf("Successfully read %d bytes.\n", bytesRead);
+//    Serial.printf("Successfully read %d bytes.\n", bytesRead);
     run();
     Serial.println("Program terminated.");
 }
@@ -139,6 +164,7 @@ void file_upload(String filename) {
     Serial.print(filename);
     Serial.print("\ncode: ");
     while(c != 10 && c != 13) {
+        webserver.handleClient();
         if(Serial.available() > 0) {
             c = (unsigned char) Serial.read();
             if(c != 10 && c != 13) {
@@ -251,16 +277,139 @@ void file_dump(String filename) {
     }
 }
 
+String strip_leading_slash(String name) {
+    if (name.length() > 0 && name[0] == '/') name = name.substring(1);
+    return name;
+}
+
+void wifi_setup() {
+    Serial.printf("Connecting to WiFi \"%s\" ", WIFI_SSID);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
+        delay(250);
+        Serial.print(".");
+    }
+    Serial.println("");
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.print("WiFi connected. IP address: ");
+        Serial.println(WiFi.localIP());
+        vmIP = String(WiFi.localIP());
+    } else {
+        Serial.println("WiFi connection failed, starting Access Point...");
+        WiFi.mode(WIFI_AP);
+        WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASSWORD);
+        Serial.printf("Access Point \"%s\" started. IP address: ", WIFI_AP_SSID);
+        Serial.println(WiFi.softAPIP());
+        vmIP = String(WiFi.softAPIP());
+    }
+}
+
+void web_handle_root() {
+    String html;
+    html.reserve(2048);
+    html += "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+            "<title>Arpia VM - Arquivos</title>"
+            "<style>body{font-family:sans-serif;margin:2em;}"
+            "table{border-collapse:collapse;width:100%;max-width:640px;}"
+            "th,td{border:1px solid #ccc;padding:0.4em 0.8em;text-align:left;}"
+            "th{background:#eee;}form{margin-top:1.5em;}"
+            "button{cursor:pointer;}</style></head><body>"
+            "<h1>Arpia VM &mdash; LittleFS</h1>"
+            "<table><tr><th>Arquivo</th><th>Tamanho</th><th></th></tr>";
+
+    int filecount = 0;
+    #ifdef ESP32
+        File root = LittleFS.open("/");
+        File file = root.openNextFile();
+        while (file) {
+            if (!file.isDirectory()) {
+                String name = strip_leading_slash(String(file.name()));
+                html += "<tr><td>" + name + "</td><td>" + String(file.size()) + " bytes</td>"
+                        "<td><a href='/delete?file=" + name + "' "
+                        "onclick=\"return confirm('Excluir " + name + "?');\">excluir</a></td></tr>";
+                filecount++;
+            }
+            file = root.openNextFile();
+        }
+    #endif
+    #ifdef ESP8266
+        Dir dir = LittleFS.openDir("/");
+        while (dir.next()) {
+            if (dir.isFile()) {
+                String name = strip_leading_slash(dir.fileName());
+                html += "<tr><td>" + name + "</td><td>" + String(dir.fileSize()) + " bytes</td>"
+                        "<td><a href='/delete?file=" + name + "' "
+                        "onclick=\"return confirm('Excluir " + name + "?');\">excluir</a></td></tr>";
+                filecount++;
+            }
+        }
+    #endif
+    if (filecount == 0) {
+        html += "<tr><td colspan='3'>Nenhum arquivo encontrado.</td></tr>";
+    }
+    html += "</table>"
+            "<h2>Upload de arquivo</h2>"
+            "<form method='POST' action='/upload' enctype='multipart/form-data'>"
+            "<input type='file' name='upload'> <button type='submit'>Enviar</button>"
+            "</form></body></html>";
+
+    webserver.send(200, "text/html", html);
+}
+
+void web_handle_delete() {
+    if (webserver.hasArg("file")) {
+        file_delete(strip_leading_slash(webserver.arg("file")));
+    }
+    webserver.sendHeader("Location", "/", true);
+    webserver.send(303);
+}
+
+void web_handle_upload_data() {
+    HTTPUpload& upload = webserver.upload();
+    String filename = "/" + strip_leading_slash(upload.filename);
+    if (upload.status == UPLOAD_FILE_START) {
+//        Serial.printf("Web upload start: %s\n", filename.c_str());
+        uploadFile = LittleFS.open(filename, "w");
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (uploadFile) uploadFile.write(upload.buf, upload.currentSize);
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (uploadFile) {
+            uploadFile.close();
+ //           Serial.printf("Web upload done: %s, %u bytes\n", filename.c_str(), upload.totalSize);
+        }
+    } else if (upload.status == UPLOAD_FILE_ABORTED) {
+        if (uploadFile) uploadFile.close();
+//        Serial.println("Web upload aborted");
+    }
+}
+
+void web_handle_upload_done() {
+    webserver.sendHeader("Location", "/", true);
+    webserver.send(303);
+}
+
+void web_server_setup() {
+    webserver.on("/", HTTP_GET, web_handle_root);
+    webserver.on("/delete", HTTP_GET, web_handle_delete);
+    webserver.on("/upload", HTTP_POST, web_handle_upload_done, web_handle_upload_data);
+    webserver.onNotFound([]() { webserver.send(404, "text/plain", "Not found"); });
+    webserver.begin();
+    Serial.println("Web server started.");
+}
+
 void setup() {
     Serial.begin(115200);
     Serial.printf("\n\n"
-                "-------------\n"
                 "Arpia VM %s\n", VERSION);
     if (!LittleFS.begin(true)) {
         Serial.println("LittleFS Disk Mount Failed!");
         return;
     }
     Serial.println("LittleFS Disk Mounted Successfully.");
+    wifi_setup();
+    web_server_setup();
     Serial.println("Minishell started.\nSystem ready!\n");
     Serial.print("# ");
 }
@@ -305,7 +454,7 @@ void loop() {
                 Serial.printf("Arpia VM %s\nMinishell\n", VERSION);
                 break;
             case TOKEN_HELP:
-                Serial.println("[HELP]\n"
+                Serial.print("[HELP]\n"
                                 "ls/dir........ list disk contents\n"
                                 "ver/version... show version\n"
                                 "format........ format disk\n"
@@ -314,7 +463,10 @@ void loop() {
                                 "cat/type ..... show file contents\n"
                                 "dump ......... dump hex file\n"
                                 "cls/clear .... clear screen\n"
-                                "<filename>.... execute file\n\n");
+                                "<filename>.... execute file\n"
+                                "web UI........ http://");
+                Serial.print(vmIP);
+                Serial.println("/ (list/upload/delete files)\n\n");
                 break;
             case TOKEN_FORMAT:
                 disk_format();
