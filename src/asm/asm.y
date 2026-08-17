@@ -1,7 +1,8 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
-#include "../include/arpia.h"
+#include <string.h>
+#include "../vm-iot/arpia.h"
 
 int yylex();
 int yyerror(const char* s);
@@ -40,14 +41,16 @@ struct labels {
 };
 struct relocs {
 	int id;
-	int ip;
-	int pos;
-	int bits_desloc;
+	int nibble_ip;   /* -1 = nenhum nibble a corrigir */
+	int nibble_alto; /* 1 = corrige bits 4-7 de code[nibble_ip], 0 = corrige bits 0-3 */
+	int value_ip;
+	int width;       /* 1, 2 ou 4 bytes */
 };
 int contlabel = 0;
 int contreloc = 0;
 struct relocs tabreloc[MAXRELOC];
 struct labels tablabel[MAXLBL];
+int curaddrmode = MODE_32BITS; /* rastreia o ADDRMODE assumido durante a montagem, atualizado por SM20/SM32 */
 
 %}
 %token MNEM_A
@@ -65,6 +68,7 @@ struct labels tablabel[MAXLBL];
 %token LABEL
 %token DATA_BYTE
 %token DATA_WORD
+%token DATA_DOUBLE
 %token DATA_FLOAT
 %token NUMERO
 %token STRING
@@ -105,7 +109,7 @@ endp:
 		;
 		
 eols:
-		 EOL		
+		 EOL
 		|eols EOL
 		;
 
@@ -172,10 +176,10 @@ mnemonico_A:
 		|MNEM_A direto VIRG imediato { geracodigo_A($1, P_DIRETO, P_IMEDIATO, $2, $4); }
 		|MNEM_A direto VIRG direto { geracodigo_A($1, P_DIRETO, P_DIRETO, $2, $4); }
 		|MNEM_A direto VIRG indireto { geracodigo_A($1, P_DIRETO, P_INDIRETO, $2, $4); }
-		|MNEM_A indireto VIRG REGISTRADOR { geracodigo_A($1, P_INDIRETO, P_REGISTRADOR, $3, $4); }
-		|MNEM_A indireto VIRG imediato { geracodigo_A($1, P_INDIRETO, P_IMEDIATO, $3, $4); }
-		|MNEM_A indireto VIRG direto { geracodigo_A($1, P_INDIRETO, P_DIRETO, $3, $4); }
-		|MNEM_A indireto VIRG indireto { geracodigo_A($1, P_INDIRETO, P_INDIRETO, $3, $4); }
+		|MNEM_A indireto VIRG REGISTRADOR { geracodigo_A($1, P_INDIRETO, P_REGISTRADOR, $2, $4); }
+		|MNEM_A indireto VIRG imediato { geracodigo_A($1, P_INDIRETO, P_IMEDIATO, $2, $4); }
+		|MNEM_A indireto VIRG direto { geracodigo_A($1, P_INDIRETO, P_DIRETO, $2, $4); }
+		|MNEM_A indireto VIRG indireto { geracodigo_A($1, P_INDIRETO, P_INDIRETO, $2, $4); }
 		
 mnemonico_B:
 		 MNEM_B REGISTRADOR VIRG REGISTRADOR { geracodigo_B($1, P_REGISTRADOR, P_REGISTRADOR, $2, $4); }
@@ -220,47 +224,76 @@ direto:
 		;
 
 indireto:
-		 ABREPAR REGISTRADOR FECHAPAR
+		 ABREPAR REGISTRADOR FECHAPAR { $$ = $2; }
 		;
 
 datadec:
 		 declaradados dados { tipodado = 0; }
 		;
 
-declaradados:		
+declaradados:
 		 db
 		|dw
-		|df
+		|dd
+		|fl
 		;
-		
+
 dados:	 dado
 		|dados VIRG dado
 		;
-		
+
 dado:	 imediato { entrada_dados_int($1); }
 		|STRING { entrada_dados_str(); }
 		|DUP ABREPAR NUMERO FECHAPAR INDEFINIDO { entrada_dados_duplica_indefinido(yylval); }
 		|INDEFINIDO { entrada_dados_indefinido(); }
 		;
-		
+
 db:		 DATA_BYTE { tipodado = DATA_BYTE; }
-		;
+
 dw:		 DATA_WORD { tipodado = DATA_WORD; }
+
+dd:		 DATA_DOUBLE { tipodado = DATA_DOUBLE; }
+
+fl:		 DATA_FLOAT { tipodado = DATA_FLOAT; }
 		;
-df:		 DATA_FLOAT { tipodado = DATA_FLOAT; }
-		;
-		
+
 %%
 #include "lex.yy.c"
 
-int main(int argc, char**argv) { 
+int main(int argc, char**argv) {
+	int i;
+	char *inname = NULL;
+	char *outname = NULL;
+
+	for(i=1; i<argc; i++) {
+		if(strcmp(argv[i], "-o") == 0 && i+1 < argc) {
+			outname = argv[++i];
+		} else {
+			inname = argv[i];
+		}
+	}
+	if(inname) {
+		yyin = fopen(inname, "r");
+		if(!yyin) {
+			printf("Erro ao abrir arquivo de entrada: %s\n", inname);
+			return(1);
+		}
+	}
+
 	map_point = map;
 	parse_ok = 1;
 	yyparse();
 	if(parse_ok) {
+		if(outname) {
+			if(!freopen(outname, "w", stdout)) {
+				printf("Erro ao abrir arquivo de saida: %s\n", outname);
+				return(1);
+			}
+		}
 		reloctable();
 		printcode();
 	}
+	return(parse_ok ? 0 : 1);
 }
 
 int yyerror(const char *s) {
@@ -307,18 +340,31 @@ void printcode() {
 void reloctable() {
 	int c;
 	int end_label;
-	int iploc;
-	
+
 	for(c=0;c<contreloc;c++) {
-		iploc = tabreloc[c].ip;
 		end_label = tablabel[tabreloc[c].id].ip;
-		if(tabreloc[c].bits_desloc==NIBBLE1) {
-			code[iploc] = code[iploc] | ((end_label>>12)&0xf0);
-		} else {				
-			code[iploc] = code[iploc] | ((end_label>>16)&0xf);
+		if(tabreloc[c].nibble_ip >= 0) {
+			if(tabreloc[c].nibble_alto) {
+				code[tabreloc[c].nibble_ip] = code[tabreloc[c].nibble_ip] | ((end_label>>12)&0xf0);
+			} else {
+				code[tabreloc[c].nibble_ip] = code[tabreloc[c].nibble_ip] | ((end_label>>16)&0xf);
+			}
 		}
-		code[iploc+tabreloc[c].pos*2] = (unsigned char)(end_label>>8)&0xff;
-		code[iploc+tabreloc[c].pos*2+1] = (unsigned char) end_label&0xff;
+		switch(tabreloc[c].width) {
+			case 1:
+				code[tabreloc[c].value_ip] = (unsigned char)(end_label&0xff);
+				break;
+			case 2:
+				code[tabreloc[c].value_ip] = (unsigned char)((end_label>>8)&0xff);
+				code[tabreloc[c].value_ip+1] = (unsigned char)(end_label&0xff);
+				break;
+			case 4:
+				code[tabreloc[c].value_ip] = (unsigned char)((end_label>>24)&0xff);
+				code[tabreloc[c].value_ip+1] = (unsigned char)((end_label>>16)&0xff);
+				code[tabreloc[c].value_ip+2] = (unsigned char)((end_label>>8)&0xff);
+				code[tabreloc[c].value_ip+3] = (unsigned char)(end_label&0xff);
+				break;
+		}
 	}
 }
 
@@ -328,11 +374,10 @@ void entrada_dados_int(int valor) {
 		incode(valor&0xff);
 		break;
 	case DATA_WORD:
-		incode((valor>>24)&0xff);
-		incode((valor>>16)&0xff);
 		incode((valor>>8)&0xff);
 		incode(valor&0xff);
 		break;
+	case DATA_DOUBLE:
 	case DATA_FLOAT:
 		incode((valor>>24)&0xff);
 		incode((valor>>16)&0xff);
@@ -378,26 +423,98 @@ void setup_map() {
 	map_point++;
 }
 
-int ajustareloc(int v, int pos, int bits_desloc) {
+/* ajustareloc: se v for um marcador de relocacao pendente (negativo), registra
+   uma entrada na tabela de relocacao (posicao do nibble opcional + posicao/
+   largura do valor) e devolve 0 como placeholder; senao devolve v inalterado. */
+int ajustareloc(int v, int value_ip, int width, int nibble_ip, int nibble_alto) {
 	if(v<0) {
 		v = -v -1;
-		tabreloc[v].pos = pos;
-		tabreloc[v].ip = ip;
-		tabreloc[v].bits_desloc = bits_desloc;
+		tabreloc[v].value_ip = value_ip;
+		tabreloc[v].width = width;
+		tabreloc[v].nibble_ip = nibble_ip;
+		tabreloc[v].nibble_alto = nibble_alto;
 		v=0;
 	}
 	return(v);
 }
 
+/* tamanho (em bytes) de um registrador, para fins de montagem (espelha
+   regsize() da VM). */
+int regsize_asm(int r) {
+	switch(r) {
+		case AH:
+		case AL:
+		case BH:
+		case BL:
+			return(1);
+		case AW:
+		case BW:
+			return(2);
+	}
+	return(4);
+}
+
+/* largura, em bytes, que um valor imediato deve usar: a largura do
+   registrador do operando companheiro, se houver; senao 32 bits (4 bytes). */
+int largura_imediato(int modo_companheiro, int valor_companheiro) {
+	if(modo_companheiro == P_REGISTRADOR || modo_companheiro == P_INDIRETO) {
+		return(regsize_asm(valor_companheiro));
+	}
+	return(4);
+}
+
+void emitvalor(int v, int width) {
+	switch(width) {
+		case 1:
+			incode((unsigned char)(v&0xff));
+			break;
+		case 2:
+			incode((unsigned char)((v>>8)&0xff));
+			incode((unsigned char)(v&0xff));
+			break;
+		default:
+			incode((unsigned char)((v>>24)&0xff));
+			incode((unsigned char)((v>>16)&0xff));
+			incode((unsigned char)((v>>8)&0xff));
+			incode((unsigned char)(v&0xff));
+			break;
+	}
+}
+
+/* largura (em bytes) que uma referencia DIRETO ocupara apos o mnemonico,
+   conforme o modo de enderecamento assumido no momento (rastreado por
+   SM20/SM32 durante a montagem). */
+int largura_direto() {
+	return(curaddrmode == MODE_20BITS ? 2 : 4);
+}
+
 void geracodigo_A(int mne, int p1, int p2, int v1, int v2) {
-	int pos = 1;
-	
-	mne=mne|p1<<10|p2<<8;
+	int w1 = 0, w2 = 0;
+	int base_ip, v1_ip, v2_ip;
+
+	if(p1 == P_IMEDIATO) w1 = largura_imediato(p2, v2);
+	else if(p1 == P_DIRETO) w1 = largura_direto();
+
+	if(p2 == P_IMEDIATO) w2 = largura_imediato(p1, v1);
+	else if(p2 == P_DIRETO) w2 = largura_direto();
+
+	base_ip = ip;
+	v1_ip = base_ip + 2;
+	v2_ip = v1_ip + w1;
+
+	mne = mne | p1<<10 | p2<<8;
+
 	switch(p1) {
 		case P_IMEDIATO:
+			v1 = ajustareloc(v1, v1_ip, w1, -1, 0);
+			break;
 		case P_DIRETO:
-			v1=ajustareloc(v1,pos++,NIBBLE1);
-			mne = mne | ((v1>>12)&0xf0);
+			if(curaddrmode == MODE_20BITS) {
+				v1 = ajustareloc(v1, v1_ip, 2, base_ip+1, 1);
+				mne = mne | ((v1>>12)&0xf0);
+			} else {
+				v1 = ajustareloc(v1, v1_ip, 4, -1, 0);
+			}
 			break;
 		case P_REGISTRADOR:
 		case P_INDIRETO:
@@ -406,9 +523,15 @@ void geracodigo_A(int mne, int p1, int p2, int v1, int v2) {
 	}
 	switch(p2) {
 		case P_IMEDIATO:
+			v2 = ajustareloc(v2, v2_ip, w2, -1, 0);
+			break;
 		case P_DIRETO:
-			v2=ajustareloc(v2,pos,NIBBLE2);
-			mne = mne | ((v2>>16)&0xf);
+			if(curaddrmode == MODE_20BITS) {
+				v2 = ajustareloc(v2, v2_ip, 2, base_ip+1, 0);
+				mne = mne | ((v2>>16)&0xf);
+			} else {
+				v2 = ajustareloc(v2, v2_ip, 4, -1, 0);
+			}
 			break;
 		case P_REGISTRADOR:
 		case P_INDIRETO:
@@ -416,18 +539,31 @@ void geracodigo_A(int mne, int p1, int p2, int v1, int v2) {
 			break;
 	}
 	printmne(mne);
-	if(p1 == P_IMEDIATO || p1 == P_DIRETO) printmne(v1);
-	if(p2 == P_IMEDIATO || p2 == P_DIRETO) printmne(v2);
+	if(w1) emitvalor(v1, w1);
+	if(w2) emitvalor(v2, w2);
 }
 
 void geracodigo_B(int mne, int p1, int p2, int v1, int v2) {
-	int pos = 1;
-	mne=mne|p1<<9|p2<<8;
+	int w1 = 0, w2 = 0;
+	int base_ip, v1_ip, v2_ip;
+
+	if(p1 == P_DIRETO) w1 = largura_direto();
+	if(p2 == P_IMEDIATO) w2 = largura_imediato(p1, v1);
+
+	base_ip = ip;
+	v1_ip = base_ip + 2;
+	v2_ip = v1_ip + w1;
+
+	mne = mne | p1<<9 | p2<<8;
+
 	switch(p1) {
-		case P_IMEDIATO:
 		case P_DIRETO:
-			v1=ajustareloc(v1,pos++,NIBBLE1);
-			mne = mne | ((v1>>12)&0xf0);
+			if(curaddrmode == MODE_20BITS) {
+				v1 = ajustareloc(v1, v1_ip, 2, base_ip+1, 1);
+				mne = mne | ((v1>>12)&0xf0);
+			} else {
+				v1 = ajustareloc(v1, v1_ip, 4, -1, 0);
+			}
 			break;
 		case P_REGISTRADOR:
 		case P_INDIRETO:
@@ -436,25 +572,33 @@ void geracodigo_B(int mne, int p1, int p2, int v1, int v2) {
 	}
 	switch(p2) {
 		case P_IMEDIATO:
-			v2=ajustareloc(v2,pos,NIBBLE2);
-			mne = mne | ((v1>>16)&0xf);
+			v2 = ajustareloc(v2, v2_ip, w2, -1, 0);
 			break;
 		case P_REGISTRADOR:
-			mne = mne | v1;
+			mne = mne | v2;
 			break;
 	}
 	printmne(mne);
-	if(p1 == P_IMEDIATO || p1 == P_DIRETO) printmne(v1);
-	if(p2 == P_IMEDIATO || p2 == P_DIRETO) printmne(v2);
+	if(w1) emitvalor(v1, w1);
+	if(w2) emitvalor(v2, w2);
 }
 
 void geracodigo_C(int mne, int p1, int p2, int v1, int v2) {
-	int pos = 1;
-	mne=mne|p1<<9|p2<<8;
+	int w1 = 0, w2 = 0;
+	int base_ip, v1_ip, v2_ip;
+
+	if(p1 == P_IMEDIATO) w1 = largura_imediato(p2, v2);
+	if(p2 == P_IMEDIATO) w2 = largura_imediato(p1, v1);
+
+	base_ip = ip;
+	v1_ip = base_ip + 2;
+	v2_ip = v1_ip + w1;
+
+	mne = mne | p1<<9 | p2<<8;
+
 	switch(p1) {
 		case P_IMEDIATO:
-			v1=ajustareloc(v1,pos++,NIBBLE1);
-			mne = mne | ((v1>>12)&0xf0);
+			v1 = ajustareloc(v1, v1_ip, w1, -1, 0);
 			break;
 		case P_REGISTRADOR:
 			mne = mne | (v1<<4);
@@ -462,26 +606,41 @@ void geracodigo_C(int mne, int p1, int p2, int v1, int v2) {
 	}
 	switch(p2) {
 		case P_IMEDIATO:
-			v2=ajustareloc(v2,pos,NIBBLE2);
-			mne = mne | ((v1>>16)&0xf);
+			v2 = ajustareloc(v2, v2_ip, w2, -1, 0);
 			break;
 		case P_REGISTRADOR:
-			mne = mne | v1;
+			mne = mne | v2;
 			break;
 	}
 	printmne(mne);
-	if(p1 == P_IMEDIATO) printmne(v1);
-	if(p2 == P_IMEDIATO) printmne(v2);
+	if(w1) emitvalor(v1, w1);
+	if(w2) emitvalor(v2, w2);
 }
 
 void geracodigo_D(int mne, int p1, int v1) {
-	mne=mne|p1<<4;
+	int base_ip, v1_ip;
+
+	base_ip = ip;
+	v1_ip = base_ip + 2;
+
+	mne = mne | p1<<4;
+
 	switch(p1) {
 		case P_IMEDIATO:
+			v1 = ajustareloc(v1, v1_ip, 4, -1, 0);
+			printmne(mne);
+			emitvalor(v1, 4);
+			break;
 		case P_DIRETO:
-			v1=ajustareloc(v1,1,NIBBLE2);
-			printmne(mne | ((v1>>16)&0xf));
-			printmne(v1&0xffff);
+			if(curaddrmode == MODE_20BITS) {
+				v1 = ajustareloc(v1, v1_ip, 2, base_ip+1, 0);
+				printmne(mne | ((v1>>16)&0xf));
+				emitvalor(v1, 2);
+			} else {
+				v1 = ajustareloc(v1, v1_ip, 4, -1, 0);
+				printmne(mne);
+				emitvalor(v1, 4);
+			}
 			break;
 		case P_INDIRETO:
 		case P_REGISTRADOR:
@@ -491,12 +650,18 @@ void geracodigo_D(int mne, int p1, int v1) {
 }
 
 void geracodigo_E(int mne, int p1, int v1) {
-	mne=mne|p1<<4;
+	int base_ip, v1_ip;
+
+	base_ip = ip;
+	v1_ip = base_ip + 2;
+
+	mne = mne | p1<<4;
+
 	switch(p1) {
 		case P_IMEDIATO:
-			v1=ajustareloc(v1,1,NIBBLE2);
-			printmne(mne | ((v1>>16)&0xf));
-			printmne(v1&0xffff);
+			v1 = ajustareloc(v1, v1_ip, 4, -1, 0);
+			printmne(mne);
+			emitvalor(v1, 4);
 			break;
 		case P_REGISTRADOR:
 			printmne(mne | v1);
@@ -505,6 +670,8 @@ void geracodigo_E(int mne, int p1, int v1) {
 }
 
 void geracodigo_F(int mne) {
+	if(mne == SM20) curaddrmode = MODE_20BITS;
+	if(mne == SM32) curaddrmode = MODE_32BITS;
 	printmne(mne);
 }
 

@@ -1,36 +1,33 @@
-all:
-	asm
-#	c
-	vm
+all:	asm c vm
 
-../src/asm/asm.tab.c ../src/asm/asm.tab.h: ../src/asm/asm.y
-	cd ../src/asm ; bison -d asm.y
+./asm/asm.tab.c ./asm/asm.tab.h: ./asm/asm.y
+	cd ./asm ; bison -d asm.y
 
-../src/asm/lex.yy.c: ../src/asm/asm.l ../src/asm/asm.tab.h
-	cd ../src/asm ; flex asm.l
+./asm/lex.yy.c: ./asm/asm.l ./asm/asm.tab.h
+	cd ./asm ; flex asm.l
 
-#../src/c/c.tab.c ../src/c/c.tab.h: ../src/c/c.y
-#	cd ../src/c ; bison -d c.y
+./c/c.tab.c ./c/c.tab.h: ./c/c.y
+	cd ./c ; bison -d c.y
 
-#../src/c/lex.yy.c: ../src/c/c.l ../src/c/c.tab.h
-#	cd ../src/c ; flex c.l
+./c/lex.yy.c: ./c/c.l ./c/c.tab.h
+	cd ./c ; flex c.l
 
-../bin/asm.exe: ../src/asm/asm.tab.c ../src/asm/asm.tab.h ../src/asm/lex.yy.c ../src/include/arpia.h
-	cd ../src/asm ; gcc -o ../../bin/asm.exe asm.tab.c -ly -L /lib
+../bin/asm.exe: ./asm/asm.tab.c ./asm/asm.tab.h ./asm/lex.yy.c ./vm-iot/arpia.h
+	cd ./asm ; gcc -o ../../bin/asm.exe asm.tab.c -ly -L /lib
 
-../bin/vm.exe: ../src/vm/vm.c ../src/include/arpia.h ../src/sys/system.h ../src/sys/system.c
-	cd ../src/vm ; gcc -o ../../bin/vm.exe vm.c
+../bin/c.exe: ./c/c.tab.c ./c/c.tab.h ./c/lex.yy.c ./vm-iot/arpia.h
+	cd ./c ; gcc -o ../../bin/c.exe c.tab.c -ly -L /lib
 
-#../bin/c.exe: ../src/c/c.tab.c ../src/c/c.tab.h ../src/c/lex.yy.c ../src/include/arpia.h
-#	cd ../src/c ; gcc -o ../../bin/c.exe c.tab.c -ly -L /lib
+../bin/vm.exe: ./vm-x86/vm.c ./vm-iot/arpia.h ./vm-iot/vm-arpia.h ./vm-x86/syscall.h ./vm-x86/vm.h
+	cd ./vm-x86 ; gcc -o ../../bin/vm.exe vm.c
 
 asm: ../bin/asm.exe
 
+c: ../bin/c.exe
+
 vm: ../bin/vm.exe
 
-#c: ../bin/c.exe
-
 clean:
-	rm ../bin/asm.exe ../src/asm/asm.tab.c ../src/asm/lex.yy.c ../src/asm/asm.tab.h
-#	rm ../bin/c.exe ../src/c/c.tab.c ../src/c/lex.yy.c ../src/c/c.tab.h
+	rm ../bin/asm.exe ./asm/asm.tab.c ./asm/lex.yy.c ./asm/asm.tab.h
+	rm ../bin/c.exe ./c/c.tab.c ./c/lex.yy.c ./c/c.tab.h
 	rm ../bin/vm.exe
