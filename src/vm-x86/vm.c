@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#ifdef _WIN32
+	#include <conio.h>
+#else
+	#include "getch.h"
+#endif
 #include "vm.h"
 #include "../vm-iot/arpia.h"
 #include "../vm-iot/vm-arpia.h"

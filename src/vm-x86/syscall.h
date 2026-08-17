@@ -1,11 +1,16 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
-#include <conio.h>
+#include <stdio.h>
+#ifdef _WIN32
+	#include <conio.h>
+#else
+	#include "getch.h"
+#endif
 #include "vm.h"
 
 unsigned char *printfmask;
 
-void syscall(unsigned int p1, unsigned int p2) {
+void vmsyscall(unsigned int p1, unsigned int p2) {
 	char *fmt;
 	char *p;
 	union { unsigned int i; float f; } conv;

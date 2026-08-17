@@ -1,5 +1,5 @@
 void displaydebug(void);
-void syscall(unsigned int p1, unsigned int p2);
+void vmsyscall(unsigned int p1, unsigned int p2);
 void print_str(const char *s);
 void print_num(const char *fmt, ...);
 void a_print(const char *s);

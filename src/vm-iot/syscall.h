@@ -4,7 +4,7 @@
 #include "vm-iot.h"
 
 unsigned char *printfmask;
-void syscall(unsigned int p1, unsigned int p2) {
+void vmsyscall(unsigned int p1, unsigned int p2) {
 	switch(p1) {
 		case SYS_PRINT:
 			Serial.print(String((const char*) memory+p2));

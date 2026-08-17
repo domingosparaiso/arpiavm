@@ -1,4 +1,4 @@
-void syscall(unsigned int p1, unsigned int p2);
+void vmsyscall(unsigned int p1, unsigned int p2);
 void run();
 void list_dir();
 void disk_format();

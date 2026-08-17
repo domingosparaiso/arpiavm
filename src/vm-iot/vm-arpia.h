@@ -660,7 +660,7 @@ void execute() {
 //			debug("XOR");
 			break;
 		case SYS:
-			syscall(p1,p2);
+			vmsyscall(p1,p2);
 //			debug("SYS");
 			break;
 		case IN:
