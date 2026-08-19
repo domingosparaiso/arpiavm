@@ -1421,7 +1421,15 @@ int main(int argc, char **argv) {
 		if(strcmp(argv[i], "-o") == 0 && i+1 < argc) {
 			outname = argv[++i];
 		} else {
-			inname = argv[i];
+			if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-?") == 0) {
+				printf( "C: VM Arpia small C compiler (c) 2026 - v0.02\n"
+						"Use: c [-o <output>] [<input>]\n"
+						"     -o <output> output assembly source, when ommited write to the stdout\n"
+						"     <input> input C source, when ommited read from stdin\n\n");
+				return(0);
+			} else {
+				inname = argv[i];
+			}
 		}
 	}
 	if(inname) {

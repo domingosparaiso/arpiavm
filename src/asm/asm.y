@@ -1,4 +1,11 @@
 %{
+#if defined(_WIN32) || defined(_WIN64)
+#include <io.h>
+#include <fcntl.h>
+#define SET_BINARY_MODE() _setmode(_fileno(stdout), _O_BINARY)
+#else
+#define SET_BINARY_MODE() ((void)0)
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +31,7 @@ void setup_name();
 void setup_map();
 void incode(unsigned char c);
 void reloctable();
+void printbin();
 void printcode();
 int mnemonico = 0;
 int tipodado = 0;
@@ -262,6 +270,7 @@ fl:		 DATA_FLOAT { tipodado = DATA_FLOAT; }
 
 int main(int argc, char**argv) {
 	int i;
+	int binary = 0;
 	char *inname = NULL;
 	char *outname = NULL;
 
@@ -269,7 +278,20 @@ int main(int argc, char**argv) {
 		if(strcmp(argv[i], "-o") == 0 && i+1 < argc) {
 			outname = argv[++i];
 		} else {
-			inname = argv[i];
+			if(strcmp(argv[i], "-b") == 0) {
+				binary = 1;
+			} else {
+				if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-?") == 0) {
+					printf( "ASM: VM Arpia Assembler (c) 2026 - v0.02\n"
+							"Use: asm [-b] [-o <output>] [<input>]\n"
+							"     -b generate output in binary format\n"
+							"     -o <output> output code file, when ommited write to the stdout\n"
+							"     <input> input assembly source, when ommited read from stdin\n\n");
+					return(0);
+				} else {
+					inname = argv[i];
+				}
+			}
 		}
 	}
 	if(inname) {
@@ -291,7 +313,11 @@ int main(int argc, char**argv) {
 			}
 		}
 		reloctable();
-		printcode();
+		if(binary) {
+			printbin();
+		} else {
+			printcode();
+		}
 	}
 	return(parse_ok ? 0 : 1);
 }
@@ -300,6 +326,14 @@ int yyerror(const char *s) {
 	printf("Erro na linha: %d\nMensagem: %s\n\"%s\"\n", yylineno, s, yytext );
 	parse_ok = 0;
 	return 0;
+}
+
+void printbin() {
+	SET_BINARY_MODE();
+	int maxprint = ip;
+	if(ultimo_indefinido<ip) maxprint=ultimo_indefinido;
+	fwrite(code, sizeof(unsigned char), maxprint, stdout);
+	fflush(stdout);
 }
 
 void printcode() {
