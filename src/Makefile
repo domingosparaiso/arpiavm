@@ -18,8 +18,8 @@ all:	asm c vm
 ../bin/c.exe: ./c/c.tab.c ./c/c.tab.h ./c/lex.yy.c ./vm-iot/arpia.h
 	cd ./c ; gcc -o ../../bin/c.exe c.tab.c -L /lib
 
-../bin/vm.exe: ./vm-x86/vm.c ./vm-iot/arpia.h ./vm-iot/vm-arpia.h ./vm-x86/syscall.h ./vm-x86/vm.h
-	cd ./vm-x86 ; gcc -o ../../bin/vm.exe vm.c
+../bin/vm.exe: ./vm/src/vm-x86.c ./vm/include/arpia.h ./vm/include/vm-arpia.h ./vm/include/syscall-x86.h ./vm/include/vm-x86.h ./vm/include/getch-x86.h
+	cd ./vm/src ; gcc -o ../../../bin/vm.exe vm-x86.c
 
 asm: ../bin/asm.exe
 
