@@ -50,7 +50,8 @@ variantes de la VM.
 
 Requiere **flex** y **bison** (en Windows, los binarios `win_flex.exe` / `win_bison.exe` del
 paquete [winflexbison](https://github.com/lexxmark/winflexbison) funcionan) y un `gcc`
-compatible con MinGW.
+compatible con MinGW. En Linux, las herramientas `make`, `gcc`, `flex` y `bison` deben estar
+instaladas.
 
 ```
 cd src
@@ -58,14 +59,6 @@ make asm     # genera bin/asm.exe
 make c       # genera bin/c.exe
 make vm      # genera bin/vm.exe
 ```
-
-> **Nota:** el objetivo `vm` del `Makefile` todavía apunta a `./vm/vm.c`, que fue reemplazado por
-> `./vm-x86/vm.c` (la VM de escritorio) — ese objetivo del Makefile está desactualizado. Para
-> recompilar la VM manualmente:
-> ```
-> cd src/vm-x86
-> gcc -o ../../bin/vm.exe vm.c
-> ```
 
 Si `bison`/`flex` no están en el `PATH`, genere los archivos manualmente antes del `gcc`:
 
@@ -75,6 +68,12 @@ win_bison -d c.y      # genera c.tab.c / c.tab.h
 win_flex c.l          # genera lex.yy.c
 gcc -o ../../bin/c.exe c.tab.c
 ```
+
+Para generar la VM que funciona en el ESP32, abra la carpeta `src/vm` en Visual Studio Code,
+seleccione el plugin `PlatformIO` (instálelo si es necesario), en `General` haga clic en `build`
+para generar el binario, luego use la opción `Upload` para enviar la imagen generada al
+dispositivo. Los archivos de la carpeta `Data` se envían al sistema de archivos LittleFS durante
+el upload.
 
 ## Uso de las herramientas
 

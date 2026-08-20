@@ -49,7 +49,7 @@ addressing modes, syscall codes) and is included by both the assembler and the t
 
 Requires **flex** and **bison** (on Windows, the `win_flex.exe` / `win_bison.exe` binaries from
 the [winflexbison](https://github.com/lexxmark/winflexbison) package work) and a MinGW-compatible
-`gcc`.
+`gcc`. On Linux, the `make`, `gcc`, `flex` and `bison` tools need to be installed.
 
 ```
 cd src
@@ -57,14 +57,6 @@ make asm     # builds bin/asm.exe
 make c       # builds bin/c.exe
 make vm      # builds bin/vm.exe
 ```
-
-> **Note:** the `vm` target in the `Makefile` still points to `./vm/vm.c`, which was replaced by
-> `./vm-x86/vm.c` (the desktop VM) — that Makefile target is out of date. To rebuild the VM
-> manually:
-> ```
-> cd src/vm-x86
-> gcc -o ../../bin/vm.exe vm.c
-> ```
 
 If `bison`/`flex` are not on your `PATH`, generate the files manually before running `gcc`:
 
@@ -74,6 +66,11 @@ win_bison -d c.y      # generates c.tab.c / c.tab.h
 win_flex c.l          # generates lex.yy.c
 gcc -o ../../bin/c.exe c.tab.c
 ```
+
+To build the VM that runs on the ESP32, open the `src/vm` folder in Visual Studio Code, select the
+`PlatformIO` plugin (install it if needed), click `build` under `General` to generate the binary,
+then use the `Upload` option to send the generated image to the device. Files in the `Data` folder
+are uploaded to the LittleFS filesystem during the upload.
 
 ## Using the tools
 
