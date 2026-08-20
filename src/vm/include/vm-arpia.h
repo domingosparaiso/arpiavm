@@ -1,52 +1,11 @@
 #ifndef VM_ARPIA_H
-
 #define VM_ARPIA_H
+#ifdef IOT
+#include "vm-iot.h"
+#else
+#include "vm-x86.h"
+#endif
 #include "arpia.h"
-
-typedef struct {
-	unsigned int mne;
-	unsigned int e1;
-	unsigned int e2;
-	unsigned int p1;
-	unsigned int p2;
-	unsigned int v1;
-	unsigned int v2;
-	unsigned int size1;
-	unsigned int size2;
-} codigo;
-
-typedef struct N {
-	unsigned char h;
-	unsigned char l;
-} typeN;
-
-typedef union {
-	struct N n;
-	unsigned short int w;
-	unsigned int x;
-} regX;
-
-typedef union F {
-	unsigned int i;
-	float f;
-} regFloat;
-
-typedef struct {
-	regX ax;
-	regX bx;
-	unsigned int cx;
-	unsigned int dx;
-	unsigned int sx;
-	unsigned int sp;
-	regFloat af;
-	regFloat bf;
-	regFloat cf;
-	regFloat df;
-	unsigned int ip;
-	unsigned int flags;
-	unsigned int wdmax;
-	unsigned int wdcount;
-} registradores;
 
 codigo cod;
 registradores reg;
@@ -56,6 +15,21 @@ unsigned int maxmem;
 unsigned int interrupt_table[32];
 char progname[128];
 char progmap[1024];
+
+void reset_vm() {
+	reg.ip = 0;
+	reg.sp = MAXRAM;
+	haltsystem = FALSE;
+}
+
+unsigned int shutdown_vm(unsigned int state) {
+	if(state != GETSTATUS) haltsystem = state;
+	return(haltsystem);
+}
+
+unsigned char *getmemory() {
+	return(memory);
+}
 
 unsigned int regtype(unsigned int regnum) {
 	switch(regnum) {
@@ -171,6 +145,7 @@ unsigned int getregval(unsigned int nreg) {
 			return(reg.wdcount);
 			break;
 	}
+	return(0);
 }
 
 void setregval(unsigned int nreg, unsigned int value) {
@@ -321,7 +296,7 @@ void decode() {
 	cod.size1 = MODE_32BITS;
 	cod.size2 = MODE_32BITS;
 	i = getcodigo();
-	if(i < SHL) {
+	if(i < VM_SHL) {
 		// A
 		cod.mne = i & 0xf000;
 		cod.e1 = (i&0x0c00)>>10;
@@ -329,7 +304,7 @@ void decode() {
 		cod.p1 = (i&0x00f0)>>4;
 		cod.p2 = (i&0x000f);
 	} else {
-		if(i < CMPA) {
+		if(i < VM_CMPA) {
 			// B
 			cod.mne = i & 0xf800;
 			cod.e1 = (i&0x0600)>>9;
@@ -337,7 +312,7 @@ void decode() {
 			cod.p1 = (i&0x00f0)>>4;
 			cod.p2 = (i&0x000f);
 		} else {
-			if(i < INC) {
+			if(i < VM_INC) {
 				// C
 				cod.mne = i & 0xfc00;
 				cod.e1 = (i&0x0200)>>9;
@@ -345,7 +320,7 @@ void decode() {
 				cod.p1 = (i&0x00f0)>>4;
 				cod.p2 = (i&0x000f);
 			} else {
-				if(i < LOOP) {
+				if(i < VM_LOOP) {
 					// D
 					cod.mne = i & 0xffc0;
 					cod.e1 = (i&0x0030)>>4;
@@ -361,8 +336,8 @@ void decode() {
 							// F
 							cod.mne = i;
 						} else {
-							// indefinido, converter em NOP
-							cod.mne = NOP;
+							// indefinido, converter em VM_NOP
+							cod.mne = VM_NOP;
 						}
 					}
 				}
@@ -578,25 +553,25 @@ void execute() {
 	p2 = ajuste_param(cod.p2, cod.e2, cod.v2, &salvamemoria, size1);
 	floatop = (cod.e1 == P_REGISTRADOR) && isfloatreg(cod.p1);
 	switch(cod.mne) {
-		case ADD:
+		case VM_ADD:
 			if(floatop) {
 				fa.i = p1; fb.i = p2; fr.f = fa.f + fb.f; r = fr.i;
 			} else {
 				r = p1+p2;
 			}
 			storeresult = TRUE;
-//			debug("ADD");
+//			debug("VM_ADD");
 			break;
-		case SUB:
+		case VM_SUB:
 			if(floatop) {
 				fa.i = p1; fb.i = p2; fr.f = fa.f - fb.f; r = fr.i;
 			} else {
 				r = p1-p2;
 			}
 			storeresult = TRUE;
-//			debug("SUB");
+//			debug("VM_SUB");
 			break;
-		case MUL:
+		case VM_MUL:
 			if(floatop) {
 				fa.i = p1; fb.i = p2; fr.f = fa.f * fb.f; r = fr.i;
 			} else {
@@ -605,9 +580,9 @@ void execute() {
 				reg.dx = longint >> 32;
 			}
 			storeresult = TRUE;
-//			debug("MUL");
+//			debug("VM_MUL");
 			break;
-		case DIV:
+		case VM_DIV:
 			if(floatop) {
 				fa.i = p1; fb.i = p2; fr.f = fa.f / fb.f; r = fr.i;
 			} else {
@@ -615,9 +590,9 @@ void execute() {
 				reg.dx = p1%p2;
 			}
 			storeresult = TRUE;
-//			debug("DIV");
+//			debug("VM_DIV");
 			break;
-		case CMP:
+		case VM_CMP:
 			setflag(FLAG_GT,FALSE);
 			setflag(FLAG_EQ,FALSE);
 			setflag(FLAG_ZR,FALSE);
@@ -637,42 +612,42 @@ void execute() {
 					if(p1==0) setflag(FLAG_ZR,TRUE);
 				}
 			}
-//			debug("CMP");
+//			debug("VM_CMP");
 			break;
-		case MOV:
+		case VM_MOV:
 			r = p2;
 			storeresult = TRUE;
-//			debug("MOV");
+//			debug("VM_MOV");
 			break;
-		case AND:
+		case VM_AND:
 			r = p1&p2;
 			storeresult = TRUE;
-//			debug("AND");
+//			debug("VM_AND");
 			break;
-		case OR:
+		case VM_OR:
 			r = p1|p2;
 			storeresult = TRUE;
-//			debug("OR");
+//			debug("VM_OR");
 			break;
-		case XOR:
+		case VM_XOR:
 			r = p1^p2;
 			storeresult = TRUE;
-//			debug("XOR");
+//			debug("VM_XOR");
 			break;
-		case SYS:
+		case VM_SYS:
 			vmsyscall(p1,p2);
-//			debug("SYS");
+//			debug("VM_SYS");
 			break;
-		case IN:
+		case VM_IN:
 			r = read_io(p2);
 			storeresult = TRUE;
-//			debug("IN");
+//			debug("VM_IN");
 			break;
-		case OUT:
+		case VM_OUT:
 			write_io(p2, p1);
-//			debug("OUT");
+//			debug("VM_OUT");
 			break;
-		case SHL:
+		case VM_SHL:
 			r = p1<<p2;
 			switch(size1) {
 				case MODE_8BITS:
@@ -699,15 +674,15 @@ void execute() {
 				}
 			}
 			storeresult = TRUE;
-//			debug("SHL");
+//			debug("VM_SHL");
 			break;
-		case SHR:
+		case VM_SHR:
 			r = p1>>p2;
 			setflag(FLAG_CY, (p1>>(p2-1)) & 1);
 			storeresult = TRUE;
-//			debug("SHR");
+//			debug("VM_SHR");
 			break;
-		case ROL:
+		case VM_ROL:
 			switch(size1) {
 				case MODE_8BITS:
 					r = p1<<p2 | p1>>(8-p2);
@@ -736,9 +711,9 @@ void execute() {
 				}
 			}
 			storeresult = TRUE;
-//			debug("ROL");
+//			debug("VM_ROL");
 			break;
-		case ROR:
+		case VM_ROR:
 			setflag(FLAG_CY,(p1>>(p2-1)) & 1);
 			switch(size1) {
 				case MODE_8BITS:
@@ -752,9 +727,9 @@ void execute() {
 					break;
 			}
 			storeresult = TRUE;
-//			debug("ROR");
+//			debug("VM_ROR");
 			break;
-		case CMPA:
+		case VM_CMPA:
 			setflag(FLAG_OV,FALSE);
 			if(p1>MAXRAM || p2>MAXRAM) {
 				setflag(FLAG_OV,TRUE);
@@ -775,9 +750,9 @@ void execute() {
 					}
 				}
 			}
-//			debug("CMPA");
+//			debug("VM_CMPA");
 			break;
-		case MOVA:
+		case VM_MOVA:
 			setflag(FLAG_OV,FALSE);
 			if(p1>MAXRAM || p2>MAXRAM) {
 				setflag(FLAG_OV,TRUE);
@@ -788,166 +763,166 @@ void execute() {
 					memcpy((char *)memory + p1, (char *)memory + p2, reg.cx);
 				}
 			}
-//			debug("MOVA");
+//			debug("VM_MOVA");
 			break;
-		case SETINT:
+		case VM_SETINT:
 			interrupt_table[p1] = p2;
 			break;
-//			debug("SETINT");
-		case INC:
+//			debug("VM_SETINT");
+		case VM_INC:
 			if(floatop) {
 				fa.i = p1; fr.f = fa.f + 1.0f; r = fr.i;
 			} else {
 				r = p1+1;
 			}
 			storeresult = TRUE;
-//			debug("INC");
+//			debug("VM_INC");
 			break;
-		case DEC:
+		case VM_DEC:
 			if(floatop) {
 				fa.i = p1; fr.f = fa.f - 1.0f; r = fr.i;
 			} else {
 				r = p1-1;
 			}
 			storeresult = TRUE;
-//			debug("DEC");
+//			debug("VM_DEC");
 			break;
-		case PUSH:
+		case VM_PUSH:
 			push(p1, size1);
-//			debug("PUSH");
+//			debug("VM_PUSH");
 			break;
-		case POP:
+		case VM_POP:
 			r = pop(size1);
 			storeresult = TRUE;
-//			debug("POP");
+//			debug("VM_POP");
 			break;
-		case NOT:
+		case VM_NOT:
 			r = ~p1;
 			storeresult = TRUE;
-//			debug("NOT");
+//			debug("VM_NOT");
 			break;
-		case LOOP:
+		case VM_LOOP:
 			reg.cx--;
 			if(reg.cx) reg.ip = p1;
-//			debug("LOOP");
+//			debug("VM_LOOP");
 			break;
-		case LOOPNZ:
+		case VM_LOOPNZ:
 			reg.cx--;
 			if(reg.cx>0 && getflag(FLAG_ZR)==FALSE) reg.ip = p1;
-//			debug("LOOPNZ");
+//			debug("VM_LOOPNZ");
 			break;
-		case JGT:
+		case VM_JGT:
 			if(getflag(FLAG_GT)==TRUE && getflag(FLAG_EQ)==FALSE) reg.ip = p1;
-//			debug("JGT");
+//			debug("VM_JGT");
 			break;
-		case JGE:
+		case VM_JGE:
 			if(getflag(FLAG_GT)==TRUE || getflag(FLAG_EQ)==TRUE) reg.ip = p1;
-//			debug("JGE");
+//			debug("VM_JGE");
 			break;
-		case JLT:
+		case VM_JLT:
 			if(getflag(FLAG_GT)==FALSE && getflag(FLAG_EQ)==FALSE) reg.ip = p1;
-//			debug("JLT");
+//			debug("VM_JLT");
 			break;
-		case JLE:
+		case VM_JLE:
 			if(getflag(FLAG_GT)==FALSE || getflag(FLAG_EQ)==TRUE) reg.ip = p1;
-//			debug("JLE");
+//			debug("VM_JLE");
 			break;
-		case JZ:
+		case VM_JZ:
 			if(getflag(FLAG_EQ)==TRUE) reg.ip = p1;
 //			debug("JEZ");
 			break;
-		case JNZ:
+		case VM_JNZ:
 			if(getflag(FLAG_EQ)==FALSE) reg.ip = p1;
-//			debug("JNZ");
+//			debug("VM_JNZ");
 			break;
-		case JC:
+		case VM_JC:
 			if(getflag(FLAG_CY)==TRUE) reg.ip = p1;
-//			debug("JC");
+//			debug("VM_JC");
 			break;
-		case JNC:
+		case VM_JNC:
 			if(getflag(FLAG_CY)==FALSE) reg.ip = p1;
-//			debug("JNC");
+//			debug("VM_JNC");
 			break;
-		case JMP:
+		case VM_JMP:
 			reg.ip = p1;
-//			debug("JMP");
+//			debug("VM_JMP");
 			break;
-		case CALL:
+		case VM_CALL:
 			push_next_ip();
 			reg.ip = p1;
-//			debug("CALL");
+//			debug("VM_CALL");
 			break;
-		case WDC:
+		case VM_WDC:
 			reg.wdmax = p1;
-//			debug("WDC");
+//			debug("VM_WDC");
 			break;
-		case INT:
+		case VM_INT:
 			pusha();
 			push_next_ip();
 			reg.ip = interrupt_table[p1];
-//			debug("INT");
+//			debug("VM_INT");
 			break;
-		case DELAY:
+		case VM_DELAY:
 			#ifdef IOT
 				delay(p1); // hardware delay
 			#endif
-//			debug("DELAY");
+//			debug("VM_DELAY");
 			break;
-		case PUSHA:
+		case VM_PUSHA:
 			pusha();
-//			debug("PUSHA");
+//			debug("VM_PUSHA");
 			break;
-		case POPA:
+		case VM_POPA:
 			popa();
-//			debug("POPA");
+//			debug("VM_POPA");
 			break;
-		case CLI:
+		case VM_CLI:
 			setflag(FLAG_INT,FALSE);
-//			debug("CLI");
+//			debug("VM_CLI");
 			break;
-		case STI:
+		case VM_STI:
 			setflag(FLAG_INT,TRUE);
-//			debug("STI");
+//			debug("VM_STI");
 			break;
-		case RET:
+		case VM_RET:
 			reg.ip = pop32();
-//			debug("RET");
+//			debug("VM_RET");
 			break;
-		case IRET:
+		case VM_IRET:
 			reg.ip = pop32();
 			popa();
-//			debug("IRET");
+//			debug("VM_IRET");
 			break;
-		case BIN:
+		case VM_BIN:
 			setflag(FLAG_STR,FALSE);
-//			debug("BIN");
+//			debug("VM_BIN");
 			break;
-		case STR:
+		case VM_STR:
 			setflag(FLAG_STR,TRUE);
-//			debug("STR");
+//			debug("VM_STR");
 			break;
-		case SM20:
+		case VM_SM20:
 			setflag(FLAG_ADDR,TRUE);
-//			debug("SM20");
+//			debug("VM_SM20");
 			break;
-		case SM32:
+		case VM_SM32:
 			setflag(FLAG_ADDR,FALSE);
-//			debug("SM32");
+//			debug("VM_SM32");
 			break;
-		case EWD:
+		case VM_EWD:
 			setflag(FLAG_WDOG,TRUE);
-//			debug("EWD");
+//			debug("VM_EWD");
 			break;
-		case DWD:
+		case VM_DWD:
 			setflag(FLAG_WDOG,FALSE);
-//			debug("DWD");
+//			debug("VM_DWD");
 			break;
-		case RWD:
+		case VM_RWD:
 			reg.wdcount=reg.wdmax;
-//			debug("EWD");
+//			debug("VM_EWD");
 			break;
-		case NOP:
-//			debug("NOP");
+		case VM_NOP:
+//			debug("VM_NOP");
 			break;
 	}
 	if(storeresult) {
@@ -966,5 +941,4 @@ void execute() {
 		}
 	}
 }
-
 #endif

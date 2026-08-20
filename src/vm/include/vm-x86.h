@@ -1,3 +1,5 @@
+#ifndef VM_X86_H
+#define VM_X86_H
 void displaydebug(void);
 void vmsyscall(unsigned int p1, unsigned int p2);
 void print_str(const char *s);
@@ -13,3 +15,4 @@ void dumpmem();
 void displaydebug();
 void set_debugmode(int mode);
 int get_debugmode();
+#endif

@@ -5,12 +5,12 @@
 #ifdef _WIN32
 	#include <conio.h>
 #else
-	#include "getch.h"
+	#include "../include/getch-x86.h"
 #endif
-#include "vm.h"
-#include "../vm-iot/arpia.h"
-#include "../vm-iot/vm-arpia.h"
-#include "syscall.h"
+#include "../include/vm-x86.h"
+#include "../include/arpia.h"
+#include "../include/vm-arpia.h"
+#include "../include/syscall-x86.h"
 
 int debugmode = DEBUGMODE;
 
@@ -64,164 +64,164 @@ void run() {
 
 const char * nomeinstrucao() {
 	switch(cod.mne) {
-		case ADD:
-			return("ADD");
+		case VM_ADD:
+			return("VM_ADD");
 			break;
-		case SUB:
-			return("SUB");
+		case VM_SUB:
+			return("VM_SUB");
 			break;
-		case MUL:
-			return("MUL");
+		case VM_MUL:
+			return("VM_MUL");
 			break;
-		case DIV:
-			return("DIV");
+		case VM_DIV:
+			return("VM_DIV");
 			break;
-		case CMP:
-			return("CMP");
+		case VM_CMP:
+			return("VM_CMP");
 			break;
-		case MOV:
-			return("MOV");
+		case VM_MOV:
+			return("VM_MOV");
 			break;
-		case AND:
-			return("AND");
+		case VM_AND:
+			return("VM_AND");
 			break;
-		case OR:
-			return("OR");
+		case VM_OR:
+			return("VM_OR");
 			break;
-		case XOR:
-			return("XOR");
+		case VM_XOR:
+			return("VM_XOR");
 			break;
-		case SYS:
-			return("SYS");
+		case VM_SYS:
+			return("VM_SYS");
 			break;
-		case IN:
-			return("IN");
+		case VM_IN:
+			return("VM_IN");
 			break;
-		case OUT:
-			return("OUT");
+		case VM_OUT:
+			return("VM_OUT");
 			break;
-		case SHL:
-			return("SHL");
+		case VM_SHL:
+			return("VM_SHL");
 			break;
-		case SHR:
-			return("SHR");
+		case VM_SHR:
+			return("VM_SHR");
 			break;
-		case ROL:
-			return("ROL");
+		case VM_ROL:
+			return("VM_ROL");
 			break;
-		case ROR:
-			return("ROR");
+		case VM_ROR:
+			return("VM_ROR");
 			break;
-		case CMPA:
-			return("CMPA");
+		case VM_CMPA:
+			return("VM_CMPA");
 			break;
-		case MOVA:
-			return("MOVA");
+		case VM_MOVA:
+			return("VM_MOVA");
 			break;
-		case SETINT:
-			return("SETINT");
+		case VM_SETINT:
+			return("VM_SETINT");
 			break;
-		case INC:
-			return("INC");
+		case VM_INC:
+			return("VM_INC");
 			break;
-		case DEC:
-			return("DEC");
+		case VM_DEC:
+			return("VM_DEC");
 			break;
-		case PUSH:
-			return("PUSH");
+		case VM_PUSH:
+			return("VM_PUSH");
 			break;
-		case POP:
-			return("POP");
+		case VM_POP:
+			return("VM_POP");
 			break;
-		case NOT:
-			return("NOT");
+		case VM_NOT:
+			return("VM_NOT");
 			break;
-		case LOOP:
-			return("LOOP");
+		case VM_LOOP:
+			return("VM_LOOP");
 			break;
-		case LOOPNZ:
-			return("LOOPNZ");
+		case VM_LOOPNZ:
+			return("VM_LOOPNZ");
 			break;
-		case JGT:
-			return("JGT");
+		case VM_JGT:
+			return("VM_JGT");
 			break;
-		case JGE:
-			return("JGE");
+		case VM_JGE:
+			return("VM_JGE");
 			break;
-		case JLT:
-			return("JLT");
+		case VM_JLT:
+			return("VM_JLT");
 			break;
-		case JLE:
-			return("JLE");
+		case VM_JLE:
+			return("VM_JLE");
 			break;
-		case JZ:
-			return("JZ");
+		case VM_JZ:
+			return("VM_JZ");
 			break;
-		case JNZ:
-			return("JNZ");
+		case VM_JNZ:
+			return("VM_JNZ");
 			break;
-		case JC:
-			return("JC");
+		case VM_JC:
+			return("VM_JC");
 			break;
-		case JNC:
-			return("JNC");
+		case VM_JNC:
+			return("VM_JNC");
 			break;
-		case JMP:
-			return("JMP");
+		case VM_JMP:
+			return("VM_JMP");
 			break;
-		case CALL:
-			return("CALL");
+		case VM_CALL:
+			return("VM_CALL");
 			break;
-		case WDC:
-			return("WDC");
+		case VM_WDC:
+			return("VM_WDC");
 			break;
-		case INT:
-			return("INT");
+		case VM_INT:
+			return("VM_INT");
 			break;
-		case DELAY:
-			return("DELAY");
+		case VM_DELAY:
+			return("VM_DELAY");
 			break;
-		case PUSHA:
-			return("POPA");
+		case VM_PUSHA:
+			return("VM_POPA");
 			break;
-		case CLI:
-			return("CLI");
+		case VM_CLI:
+			return("VM_CLI");
 			break;
-		case STI:
-			return("STI");
+		case VM_STI:
+			return("VM_STI");
 			break;
-		case RET:
-			return("RET");
+		case VM_RET:
+			return("VM_RET");
 			break;
-		case IRET:
-			return("IRET");
+		case VM_IRET:
+			return("VM_IRET");
 			break;
-		case BIN:
-			return("BIN");
+		case VM_BIN:
+			return("VM_BIN");
 			break;
-		case STR:
-			return("STR");
+		case VM_STR:
+			return("VM_STR");
 			break;
-		case RST:
-			return("RST");
+		case VM_RST:
+			return("VM_RST");
 			break;
-		case SM20:
-			return("SM20");
+		case VM_SM20:
+			return("VM_SM20");
 			break;
-		case SM32:
-			return("SM32");
+		case VM_SM32:
+			return("VM_SM32");
 			break;
-		case EWD:
-			return("EWD");
+		case VM_EWD:
+			return("VM_EWD");
 			break;
-		case DWD:
-			return("DWD");
+		case VM_DWD:
+			return("VM_DWD");
 			break;
-		case RWD:
-			return("RWD");
+		case VM_RWD:
+			return("VM_RWD");
 			break;
-		case NOP:
-			return("NOP");
+		case VM_NOP:
+			return("VM_NOP");
 			break;
 	}
 	return("???");
@@ -360,7 +360,7 @@ void displaydebug() {
 	int c;
 	printf("AX=%04X BX=%04X CX=%04X DX=%04X SX=%04X SP=%04X\n", reg.ax.x, reg.bx.x, reg.cx, reg.dx, reg.sx, reg.sp);
 	printf("AF=%04X BF=%04X CF=%04X DF=%04X\n", reg.af.i, reg.bf.i, reg.cf.i, reg.df.i);
-	printf("Flags: ZR=%01d CY=%01d OV=%01d GT=%01d ST=%01d WD=%01d AM=%01d IN=%01d IP=%04X Mode: ", getflag(FLAG_ZR),getflag(FLAG_CY),getflag(FLAG_OV),getflag(FLAG_GT),getflag(FLAG_STR),getflag(FLAG_WDOG),getflag(FLAG_ADDR),getflag(FLAG_INT), reg.ip);
+	printf("Flags: ZR=%01d CY=%01d OV=%01d GT=%01d ST=%01d WD=%01d AM=%01d VM_IN=%01d IP=%04X Mode: ", getflag(FLAG_ZR),getflag(FLAG_CY),getflag(FLAG_OV),getflag(FLAG_GT),getflag(FLAG_STR),getflag(FLAG_WDOG),getflag(FLAG_ADDR),getflag(FLAG_INT), reg.ip);
 	printf("%s ", nomeinstrucao());
 	if(cod.mne < 0xff20) displayend(cod.e1, cod.p1, cod.v1);
 	if(cod.mne < 0xfc00) {

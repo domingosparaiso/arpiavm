@@ -1,12 +1,12 @@
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef SYSCALL_X86_H
+#define SYSCALL_X86_H
 #include <stdio.h>
 #ifdef _WIN32
 	#include <conio.h>
 #else
-	#include "getch.h"
+	#include "../include/getch-x86.h"
 #endif
-#include "vm.h"
+#include "../include/vm-x86.h"
 
 unsigned char *printfmask;
 
@@ -46,7 +46,7 @@ void vmsyscall(unsigned int p1, unsigned int p2) {
 				printf(fmt);
 			}
 			break;
-		case SYS_DEBUG:
+		case SYS_DBGPRINT:
 			if(get_debugmode()) printf((char*)memory+p2);
 			break;
 		case SYS_HALT:

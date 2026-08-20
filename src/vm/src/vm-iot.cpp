@@ -1,9 +1,14 @@
-#define IOT 1
+#define IOT
+#include <Arduino.h>
+#include <LittleFS.h>
+#include <WebServer.h>
+#include <WiFi.h>
+#include "arpia.h"
+#include "vm-arpia.h"
+
 #include <Arduino.h>
 #include <LittleFS.h>
 #include "vm-iot.h"
-#include "vm-arpia.h"
-#include "syscall.h"
 #define VERSION "1.02"
 
 #ifdef ESP32
@@ -26,6 +31,7 @@ ESP8266WebServer webserver(80);
 #define WIFI_AP_SSID "ArpiaVM"
 #define WIFI_AP_PASSWORD "arpiavm123"
 #define WIFI_CONNECT_TIMEOUT_MS 15000
+#include "syscall-iot.h"
 
 File uploadFile;
 
@@ -68,10 +74,8 @@ String read_input() {
 }
 
 void run() {
-	reg.ip = 0;
-	reg.sp = MAXRAM;
-	haltsystem = FALSE;
-	while(!haltsystem) {
+  reset_vm();
+	while(shutdown_vm(GETSTATUS)!=TRUE) {
 		decode();
 		execute();
 	}
@@ -146,7 +150,7 @@ void file_exec(String filename) {
     size_t fileSize = readFile.size();
 //    Serial.printf("File Size: %d bytes\n", fileSize);
 
-    size_t bytesRead = readFile.read(memory, fileSize);
+    size_t bytesRead = readFile.read(getmemory(), fileSize);
 //    Serial.printf("Successfully read %d bytes.\n", bytesRead);
     run();
     Serial.println("Program terminated.");
@@ -172,9 +176,9 @@ void file_cat(String filename) {
         return;
     }
     size_t fileSize = readFile.size();
-    size_t bytesRead = readFile.read(memory, fileSize);
-    memory[fileSize] = 0;
-    Serial.printf("%s\n", memory);
+    size_t bytesRead = readFile.read(getmemory(), fileSize);
+    getmemory()[fileSize] = 0;
+    Serial.printf("%s\n", getmemory());
 }
 
 #define MAX_HEX_DUMP_LINE 32
@@ -185,13 +189,13 @@ void file_dump(String filename) {
         return;
     }
     size_t fileSize = readFile.size();
-    size_t bytesRead = readFile.read(memory, fileSize);
+    size_t bytesRead = readFile.read(getmemory(), fileSize);
     size_t i = 0;
     while(i<fileSize) {
         Serial.print("| ");
         for(int d=i; d<i+MAX_HEX_DUMP_LINE; d++) {
             if(d<fileSize) {
-                Serial.printf("%02X ", memory[d]);
+                Serial.printf("%02X ", *(getmemory()+d));
             } else {
                 Serial.print("   ");
             }
@@ -199,7 +203,7 @@ void file_dump(String filename) {
         Serial.print("| ");
         for(int d=i; d<i+MAX_HEX_DUMP_LINE; d++) {
             if(d<fileSize) {
-                char c = memory[d];
+                char c = *(getmemory()+d);
                 if(c < 32 || c > 126) c = '.';
                 Serial.printf("%c",c);
             } else {
@@ -268,7 +272,7 @@ void wifi_edit_credentials() {
 void wifi_save_credentials(int showmsg) {
     File credFile = LittleFS.open("/wifi.txt", FILE_WRITE);
     if (!credFile) {
-        if(showmsg) Serial.println("\Fail to access wifi.txt file\n");
+        if(showmsg) Serial.println("\nFail to access wifi.txt file\n");
         return;
     }
     credFile.printf("%s,%s\n", VM_WIFI_SSID, VM_WIFI_PASSWORD);

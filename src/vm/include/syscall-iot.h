@@ -1,5 +1,6 @@
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef SYSCALL_IOT_H
+#define SYSCALL_IOT_H
+#include <Arduino.h>
 #include "arpia.h"
 #include "vm-iot.h"
 
@@ -7,10 +8,10 @@ unsigned char *printfmask;
 void vmsyscall(unsigned int p1, unsigned int p2) {
 	switch(p1) {
 		case SYS_PRINT:
-			Serial.print(String((const char*) memory+p2));
+			Serial.print(String((const char*) getmemory()+p2));
 			break;
 		case SYS_PRINTS:
-			printfmask = memory+p2;
+			printfmask = getmemory()+p2;
 			break;
 		case SYS_PRINTF:
 			{
@@ -20,11 +21,11 @@ void vmsyscall(unsigned int p1, unsigned int p2) {
 					p++;
 					while(*p && strchr("-+ #0123456789.", *p)) p++;
 					if(*p=='f' || *p=='g' || *p=='e') {
-						union F conv;
+						regFloat conv;
 						conv.i = p2;
 						Serial.printf(fmt, (double)conv.f);
 					} else if(*p=='s') {
-						Serial.printf(fmt, (const char*)memory+p2);
+						Serial.printf(fmt, (const char*) getmemory()+p2);
 					} else {
 						Serial.printf(fmt, p2);
 					}
@@ -33,10 +34,10 @@ void vmsyscall(unsigned int p1, unsigned int p2) {
 				}
 			}
 			break;
-		case SYS_DEBUG:
+		case SYS_DBGPRINT:
 			break;
 		case SYS_HALT:
-			haltsystem = TRUE;
+			shutdown_vm(TRUE);
 			break;
 		case SYS_INPUTPIN:
 			pinMode(p2, INPUT);
